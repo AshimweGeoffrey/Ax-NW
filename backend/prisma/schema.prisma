@@ -1,0 +1,218 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(uuid()) @db.VarChar(50)
+  name            String   @unique @db.VarChar(32)
+  email           String   @unique @db.VarChar(32)
+  password        String?  @unique @db.VarChar(256)
+  accessControl   String?  @map("access_control") @db.VarChar(32)
+  isActive        Boolean  @default(true) @map("is_active")
+  lastLogin       DateTime? @map("last_login")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  salesWeekly     SaleWeekly[]
+  outgoingStock   OutgoingStock[]
+  stockMovements  StockMovement[]
+  systemLogs      SystemLog[]
+  managedBranches Branch[]
+  createdItems    Inventory[]
+  updatedSettings Settings[]
+
+  @@map("user")
+}
+
+model Branch {
+  id        String   @id @default(uuid()) @db.VarChar(50)
+  name      String   @unique @map("branch_name") @db.VarChar(16)
+  address   String?  @db.Text
+  phone     String?  @db.VarChar(20)
+  managerId String?  @map("manager_id") @db.VarChar(36)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  manager       User?           @relation(fields: [managerId], references: [id])
+  outgoingStock OutgoingStock[]
+  salesWeekly   SaleWeekly[]
+  fromMovements StockMovement[] @relation("FromBranch")
+  toMovements   StockMovement[] @relation("ToBranch")
+
+  @@map("branch")
+}
+
+model Category {
+  id         String   @id @default(uuid()) @db.VarChar(50)
+  name       String   @unique @db.VarChar(32)
+  percentage String?  @db.VarChar(12)
+  description String? @db.Text
+  profitPercentage Decimal @default(0.00) @map("profit_percentage") @db.Decimal(5,2)
+  colorCode  String   @default("#3B82F6") @map("color_code") @db.VarChar(7)
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  inventory     Inventory[]
+  salesWeekly   SaleWeekly[]
+  outgoingStock OutgoingStock[]
+
+  @@map("category")
+}
+
+model Inventory {
+  id                String    @id @default(uuid()) @db.VarChar(50)
+  name              String    @unique @db.VarChar(64)
+  sku               String?   @unique @db.VarChar(50)
+  categoryName      String    @map("category_name") @db.VarChar(32)
+  inventoryQuantity Int       @default(0) @map("inventory_quantity")
+  incomingTimeStamp DateTime? @map("incoming_time_stamp")
+  minStockLevel     Int       @default(5) @map("min_stock_level")
+  maxStockLevel     Int       @default(1000) @map("max_stock_level")
+  unitCost          Decimal   @default(0.00) @map("unit_cost") @db.Decimal(10,2)
+  sellingPrice      Decimal   @default(0.00) @map("selling_price") @db.Decimal(10,2)
+  supplier          String?   @db.VarChar(100)
+  location          String?   @db.VarChar(50)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  createdBy         String?   @map("created_by") @db.VarChar(36)
+
+  // Relations
+  category       Category        @relation(fields: [categoryName], references: [name])
+  creator        User?           @relation(fields: [createdBy], references: [id])
+  salesWeekly    SaleWeekly[]
+  outgoingStock  OutgoingStock[]
+  stockMovements StockMovement[]
+
+  @@map("inventory")
+}
+
+model PaymentMethod {
+  paymentId   String? @map("payment_id") @db.VarChar(50)
+  name        String  @id @db.VarChar(50)
+  totalWeekly Int     @default(0) @map("total_weekly")
+
+  // Relations
+  salesWeekly SaleWeekly[]
+
+  @@map("payment_method")
+}
+
+model SaleWeekly {
+  id            String    @id @default(uuid()) @db.VarChar(50)
+  invoiceNumber String?   @unique @map("invoice_number") @db.VarChar(50)
+  itemName      String?   @map("item_name") @db.VarChar(64)
+  category      String?   @db.VarChar(32)
+  quantity      Int       @default(1)
+  price         Int       @default(0)
+  userName      String?   @map("user_name") @db.VarChar(32)
+  timeStamp     DateTime? @map("time_stamp")
+  paymentMethod String?   @map("payment_method") @db.VarChar(50)
+  discountAmount Decimal  @default(0.00) @map("discount_amount") @db.Decimal(10,2)
+  taxAmount     Decimal   @default(0.00) @map("tax_amount") @db.Decimal(10,2)
+  customerName  String?   @map("customer_name") @db.VarChar(100)
+  customerPhone String?   @map("customer_phone") @db.VarChar(20)
+  branchId      String?   @map("branch_id") @db.VarChar(36)
+
+  // Relations
+  user    User?          @relation(fields: [userName], references: [name])
+  item    Inventory?     @relation(fields: [itemName], references: [name])
+  categoryRel Category?  @relation(fields: [category], references: [name])
+  payment PaymentMethod? @relation(fields: [paymentMethod], references: [name])
+  branch  Branch?        @relation(fields: [branchId], references: [id])
+
+  @@map("sale_weekly")
+}
+
+model OutgoingStock {
+  id           String    @id @default(uuid()) @db.VarChar(50)
+  itemName     String    @map("item_name") @db.VarChar(64)
+  categoryName String    @map("category_name") @db.VarChar(32)
+  userName     String?   @map("user_name") @db.VarChar(32)
+  branchName   String?   @map("branch_name") @db.VarChar(16)
+  quantity     Int
+  timeStamp    DateTime? @default(now()) @map("time_stamp")
+
+  // Relations
+  item     Inventory @relation(fields: [itemName], references: [name])
+  category Category  @relation(fields: [categoryName], references: [name])
+  user     User?     @relation(fields: [userName], references: [name])
+  branch   Branch?   @relation(fields: [branchName], references: [name])
+
+  @@map("outgoing_stock")
+}
+
+model StockMovement {
+  id            String    @id @default(uuid()) @db.VarChar(36)
+  itemId        String    @map("item_id") @db.VarChar(36)
+  movementType  String    @map("movement_type") @db.VarChar(20) // 'in', 'out', 'transfer', 'adjustment'
+  quantity      Int
+  fromBranchId  String?   @map("from_branch_id") @db.VarChar(36)
+  toBranchId    String?   @map("to_branch_id") @db.VarChar(36)
+  referenceId   String?   @map("reference_id") @db.VarChar(36)
+  referenceType String?   @map("reference_type") @db.VarChar(20) // 'sale', 'purchase', 'transfer', 'adjustment'
+  notes         String?   @db.Text
+  userId        String    @map("user_id") @db.VarChar(36)
+  movementDate  DateTime  @default(now()) @map("movement_date")
+
+  // Relations
+  item       Inventory @relation(fields: [itemId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+  fromBranch Branch?   @relation("FromBranch", fields: [fromBranchId], references: [id])
+  toBranch   Branch?   @relation("ToBranch", fields: [toBranchId], references: [id])
+
+  @@map("stock_movements")
+}
+
+model SystemLog {
+  id         String    @id @default(uuid()) @db.VarChar(36)
+  userId     String?   @map("user_id") @db.VarChar(36)
+  action     String    @db.VarChar(100)
+  tableName  String?   @map("table_name") @db.VarChar(50)
+  recordId   String?   @map("record_id") @db.VarChar(36)
+  oldValues  String?   @map("old_values") @db.Text // JSON string
+  newValues  String?   @map("new_values") @db.Text // JSON string
+  ipAddress  String?   @map("ip_address") @db.VarChar(45)
+  userAgent  String?   @map("user_agent") @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("system_logs")
+}
+
+model Settings {
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  keyName     String   @unique @map("key_name") @db.VarChar(100)
+  value       String?  @db.Text
+  description String?  @db.Text
+  category    String   @default("general") @db.VarChar(50)
+  updatedBy   String?  @map("updated_by") @db.VarChar(36)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  updater User? @relation(fields: [updatedBy], references: [id])
+
+  @@map("settings")
+}
+
+model Remark {
+  id        String   @id @default(uuid()) @db.VarChar(50)
+  timeStamp DateTime @map("time_stamp")
+  message   String   @db.VarChar(1000)
+
+  @@map("remark")
+}

@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: ax_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "Ashimwe#001"
+      MYSQL_DATABASE: "AX_STOCK_ALX_PROJECT1"
+      MYSQL_USER: ax_user
+      MYSQL_PASSWORD: "Ashimwe#001"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./Main_Database:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ax_network
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: ax_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - ax_network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: ax_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: "AX_STOCK_ALX_PROJECT1"
+      DB_USER: ax_user
+      DB_PASSWORD: "Ashimwe#001"
+      DATABASE_URL: "mysql://ax_user:Ashimwe%23001@mysql:3306/AX_STOCK_ALX_PROJECT1"
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ax_stock_jwt_secret_2024
+      JWT_REFRESH_SECRET: ax_stock_refresh_secret_2024
+      JWT_EXPIRES_IN: 24h
+      JWT_REFRESH_EXPIRES_IN: 7d
+      PORT: 3001
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mysql
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
+    networks:
+      - ax_network
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: ax_frontend
+    restart: unless-stopped
+    environment:
+      REACT_APP_API_URL: http://localhost:3001/api/v1
+      REACT_APP_WS_URL: ws://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - ax_network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  ax_network:
+    driver: bridge
