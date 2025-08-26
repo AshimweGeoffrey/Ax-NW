@@ -1,4 +1,4 @@
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { logger } from "./logger";
 
@@ -43,47 +43,50 @@ export function setupSocketIO(server: any) {
     }
   });
 
-  io.on("connection", (socket: AuthSocket) => {
-    logger.info(`User connected: ${socket.user?.name} (${socket.id})`);
+  io.on("connection", (socket: Socket) => {
+    const authSocket = socket as AuthSocket;
+    logger.info(`User connected: ${authSocket.user?.name} (${authSocket.id})`);
 
     // Join user to their role-based rooms
-    if (socket.user?.role) {
-      socket.join(socket.user.role);
-      socket.join(`user_${socket.user.id}`);
+    if (authSocket.user?.role) {
+      authSocket.join(authSocket.user.role);
+      authSocket.join(`user_${authSocket.user.id}`);
     }
 
     // Subscribe to inventory updates
-    socket.on("subscribe-inventory", () => {
-      socket.join("inventory-updates");
-      logger.info(`${socket.user?.name} subscribed to inventory updates`);
+    authSocket.on("subscribe-inventory", () => {
+      authSocket.join("inventory-updates");
+      logger.info("User subscribed to inventory updates");
     });
 
     // Subscribe to sales updates
-    socket.on("subscribe-sales", () => {
-      socket.join("sales-updates");
-      logger.info(`${socket.user?.name} subscribed to sales updates`);
+    authSocket.on("subscribe-sales", () => {
+      authSocket.join("sales-updates");
+      logger.info("User subscribed to sales updates");
     });
 
     // Subscribe to analytics updates
-    socket.on("subscribe-analytics", () => {
-      socket.join("analytics-updates");
-      logger.info(`${socket.user?.name} subscribed to analytics updates`);
+    authSocket.on("subscribe-analytics", () => {
+      authSocket.join("analytics-updates");
+      logger.info("User subscribed to analytics updates");
     });
 
-    // Handle low stock alerts
-    socket.on("subscribe-low-stock", () => {
-      socket.join("low-stock-alerts");
-      logger.info(`${socket.user?.name} subscribed to low stock alerts`);
+    // Subscribe to low stock alerts
+    authSocket.on("subscribe-low-stock", () => {
+      authSocket.join("low-stock-alerts");
+      logger.info("User subscribed to low stock alerts");
     });
 
-    // Handle disconnection
-    socket.on("disconnect", () => {
-      logger.info(`User disconnected: ${socket.user?.name} (${socket.id})`);
+    // Handle disconnect
+    authSocket.on("disconnect", () => {
+      logger.info(
+        `User disconnected: ${authSocket.user?.name} (${authSocket.id})`
+      );
     });
 
     // Handle errors
-    socket.on("error", (error) => {
-      logger.error(`Socket error for user ${socket.user?.name}:`, error);
+    authSocket.on("error", (error: any) => {
+      logger.error("Socket error:", error);
     });
   });
 

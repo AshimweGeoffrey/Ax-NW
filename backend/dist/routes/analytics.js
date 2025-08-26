@@ -124,7 +124,7 @@ router.get("/inventory", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(a
             by: ["itemId"],
             _count: true,
             _sum: { quantity: true },
-            orderBy: { _count: { _all: "desc" } },
+            orderBy: { _count: { itemId: "desc" } },
             take: 10,
         }),
         database_1.prisma.$queryRaw `

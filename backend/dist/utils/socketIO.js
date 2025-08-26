@@ -34,32 +34,33 @@ function setupSocketIO(server) {
         }
     });
     io.on("connection", (socket) => {
-        logger_1.logger.info(`User connected: ${socket.user?.name} (${socket.id})`);
-        if (socket.user?.role) {
-            socket.join(socket.user.role);
-            socket.join(`user_${socket.user.id}`);
+        const authSocket = socket;
+        logger_1.logger.info(`User connected: ${authSocket.user?.name} (${authSocket.id})`);
+        if (authSocket.user?.role) {
+            authSocket.join(authSocket.user.role);
+            authSocket.join(`user_${authSocket.user.id}`);
         }
-        socket.on("subscribe-inventory", () => {
-            socket.join("inventory-updates");
-            logger_1.logger.info(`${socket.user?.name} subscribed to inventory updates`);
+        authSocket.on("subscribe-inventory", () => {
+            authSocket.join("inventory-updates");
+            logger_1.logger.info("User subscribed to inventory updates");
         });
-        socket.on("subscribe-sales", () => {
-            socket.join("sales-updates");
-            logger_1.logger.info(`${socket.user?.name} subscribed to sales updates`);
+        authSocket.on("subscribe-sales", () => {
+            authSocket.join("sales-updates");
+            logger_1.logger.info("User subscribed to sales updates");
         });
-        socket.on("subscribe-analytics", () => {
-            socket.join("analytics-updates");
-            logger_1.logger.info(`${socket.user?.name} subscribed to analytics updates`);
+        authSocket.on("subscribe-analytics", () => {
+            authSocket.join("analytics-updates");
+            logger_1.logger.info("User subscribed to analytics updates");
         });
-        socket.on("subscribe-low-stock", () => {
-            socket.join("low-stock-alerts");
-            logger_1.logger.info(`${socket.user?.name} subscribed to low stock alerts`);
+        authSocket.on("subscribe-low-stock", () => {
+            authSocket.join("low-stock-alerts");
+            logger_1.logger.info("User subscribed to low stock alerts");
         });
-        socket.on("disconnect", () => {
-            logger_1.logger.info(`User disconnected: ${socket.user?.name} (${socket.id})`);
+        authSocket.on("disconnect", () => {
+            logger_1.logger.info(`User disconnected: ${authSocket.user?.name} (${authSocket.id})`);
         });
-        socket.on("error", (error) => {
-            logger_1.logger.error(`Socket error for user ${socket.user?.name}:`, error);
+        authSocket.on("error", (error) => {
+            logger_1.logger.error("Socket error:", error);
         });
     });
     const emitToRole = (role, event, data) => {
