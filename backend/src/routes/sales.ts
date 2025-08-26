@@ -281,14 +281,16 @@ router.post(
     }
 
     // Update inventory (add back returned items)
-    await prisma.inventory.update({
-      where: { name: sale.itemName },
-      data: {
-        inventoryQuantity: {
-          increment: quantity,
+    if (sale.itemName) {
+      await prisma.inventory.update({
+        where: { name: sale.itemName },
+        data: {
+          inventoryQuantity: {
+            increment: quantity,
+          },
         },
-      },
-    });
+      });
+    }
 
     // Create stock movement record for return
     await prisma.stockMovement.create({

@@ -75,7 +75,7 @@ const generateTokens = (user: any) => {
  */
 router.post(
   "/login",
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { username, password } = loginSchema.parse(req.body);
 
     // Find user by username

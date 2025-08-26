@@ -187,14 +187,16 @@ router.post("/:id/return", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)
     if (quantity > sale.quantity) {
         throw (0, errorHandler_1.createError)("Return quantity cannot exceed sale quantity", 400);
     }
-    await database_1.prisma.inventory.update({
-        where: { name: sale.itemName },
-        data: {
-            inventoryQuantity: {
-                increment: quantity,
+    if (sale.itemName) {
+        await database_1.prisma.inventory.update({
+            where: { name: sale.itemName },
+            data: {
+                inventoryQuantity: {
+                    increment: quantity,
+                },
             },
-        },
-    });
+        });
+    }
     await database_1.prisma.stockMovement.create({
         data: {
             itemId: sale.item.id,

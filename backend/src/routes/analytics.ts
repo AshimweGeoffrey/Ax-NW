@@ -191,7 +191,7 @@ router.get(
         by: ["itemId"],
         _count: true,
         _sum: { quantity: true },
-        orderBy: { _count: { _all: "desc" } },
+        orderBy: { _count: { itemId: "desc" } },
         take: 10,
       }),
 
