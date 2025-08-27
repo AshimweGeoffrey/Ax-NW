@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../utils/database";
 import { asyncHandler, createError } from "../middleware/errorHandler";
@@ -47,7 +47,7 @@ const adjustStockSchema = z.object({
 router.get(
   "/",
   requireStaff,
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const search = req.query.search as string;
@@ -119,7 +119,7 @@ router.get(
 router.get(
   "/:id",
   requireStaff,
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const item = await prisma.inventory.findUnique({
       where: { id: req.params.id },
       include: {
@@ -162,7 +162,7 @@ router.get(
 router.post(
   "/",
   requireStaff,
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const validatedData = createInventorySchema.parse(req.body);
 
     // Check if category exists
@@ -241,7 +241,7 @@ router.post(
 router.put(
   "/:id",
   requireStaff,
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const validatedData = updateInventorySchema.parse(req.body);
 
     const existingItem = await prisma.inventory.findUnique({
@@ -293,7 +293,7 @@ router.put(
 router.post(
   "/:id/adjust",
   requireStaff,
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const { quantity, type, notes } = adjustStockSchema.parse(req.body);
 
     const item = await prisma.inventory.findUnique({
@@ -349,7 +349,7 @@ router.post(
 router.delete(
   "/:id",
   requireStaff,
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const item = await prisma.inventory.findUnique({
       where: { id: req.params.id },
     });
@@ -394,7 +394,7 @@ router.delete(
 router.get(
   "/reports/low-stock",
   requireStaff,
-  asyncHandler(async (req: AuthRequest, res) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const items = await prisma.$queryRaw`
     SELECT i.*, c.name as categoryName, c.color_code as categoryColor
     FROM inventory i

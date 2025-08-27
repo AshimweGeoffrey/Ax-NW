@@ -16,7 +16,7 @@ import {
   VisibilityOff,
   Login as LoginIcon,
 } from "@mui/icons-material";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "../../store/authStore";
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({

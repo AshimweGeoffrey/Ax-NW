@@ -10,16 +10,16 @@ import { CssBaseline, Box } from "@mui/material";
 import { Toaster } from "react-hot-toast";
 
 // Import components (to be created)
-import Login from "@/pages/auth/Login";
-import Dashboard from "@/pages/Dashboard";
-import InventoryPage from "@/pages/inventory/InventoryPage";
-import SalesPage from "@/pages/sales/SalesPage";
-import AnalyticsPage from "@/pages/analytics/AnalyticsPage";
-import UsersPage from "@/pages/admin/UsersPage";
-import SettingsPage from "@/pages/settings/SettingsPage";
+import Login from "./pages/auth/Login";
+import Dashboard from "./pages/Dashboard";
+// import InventoryPage from "./pages/inventory/InventoryPage";
+// import SalesPage from "./pages/sales/SalesPage";
+// import AnalyticsPage from "./pages/analytics/AnalyticsPage";
+// import UsersPage from "./pages/admin/UsersPage";
+// import SettingsPage from "./pages/settings/SettingsPage";
 
 // Import hooks and stores
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "./store/authStore";
 
 // Create theme
 const theme = createTheme({
@@ -101,6 +101,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* TODO: Add these routes when components are created */}
+            {/*
             <Route
               path="/inventory"
               element={
@@ -141,6 +143,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            */}
 
             {/* Fallback route */}
             <Route path="*" element={<Navigate to="/" replace />} />

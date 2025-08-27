@@ -5,7 +5,7 @@ import {
   ChangePasswordData,
   User,
   ApiResponse,
-} from "@/types";
+} from "../types";
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<
