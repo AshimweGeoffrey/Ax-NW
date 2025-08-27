@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { AuthState, User, LoginCredentials } from "@/types";
-import { authService } from "@/services/auth";
+import { AuthState, User, LoginCredentials } from "../types";
+import { authService } from "../services/auth";
 import toast from "react-hot-toast";
 
 interface AuthStore extends AuthState {

@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../utils/database";
 import { asyncHandler, createError } from "../middleware/errorHandler";
@@ -38,7 +38,7 @@ const createSaleSchema = z.object({
 router.get(
   "/",
   requireStaff,
-  asyncHandler(async (req: any, res: any) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const startDate = req.query.startDate as string;
@@ -118,7 +118,7 @@ router.get(
 router.get(
   "/:id",
   requireStaff,
-  asyncHandler(async (req: any, res: any) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const sale = await prisma.saleWeekly.findUnique({
       where: { id: req.params.id },
       include: {
@@ -161,7 +161,7 @@ router.get(
 router.post(
   "/",
   requireStaff,
-  asyncHandler(async (req: any, res: any) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const validatedData = createSaleSchema.parse(req.body);
 
     // Check if item exists and has sufficient stock
@@ -208,7 +208,7 @@ router.post(
         category: item.categoryName,
         quantity: validatedData.quantity,
         price: totalPrice,
-        userName: req.user.name,
+        userName: req.user?.name || "Unknown",
         paymentMethod: validatedData.paymentMethod,
         customerName: validatedData.customerName,
         customerPhone: validatedData.customerPhone,
@@ -240,7 +240,7 @@ router.post(
         referenceId: sale.id,
         referenceType: "sale",
         notes: `Sale: ${invoiceNumber}`,
-        userId: req.user.id,
+        userId: req.user?.id || "",
       },
     });
 
@@ -264,7 +264,7 @@ router.post(
 router.post(
   "/:id/return",
   requireStaff,
-  asyncHandler(async (req: any, res: any) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const { quantity, reason } = req.body;
 
     const sale = await prisma.saleWeekly.findUnique({
@@ -301,7 +301,7 @@ router.post(
         referenceId: sale.id,
         referenceType: "adjustment",
         notes: `Return: ${reason || "Customer return"}`,
-        userId: req.user.id,
+        userId: req.user?.id || "",
       },
     });
 
@@ -343,7 +343,7 @@ router.post(
 router.get(
   "/reports/summary",
   requireStaff,
-  asyncHandler(async (req: any, res: any) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
     const startDate = req.query.startDate
       ? new Date(req.query.startDate as string)
       : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);

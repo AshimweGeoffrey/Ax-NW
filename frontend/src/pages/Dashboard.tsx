@@ -8,7 +8,7 @@ import {
   Grid,
   Button,
 } from "@mui/material";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "../store/authStore";
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuthStore();
