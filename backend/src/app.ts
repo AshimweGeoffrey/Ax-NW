@@ -17,6 +17,7 @@ import userRoutes from "./routes/users";
 import branchRoutes from "./routes/branches";
 import categoryRoutes from "./routes/categories";
 import outgoingRoutes from "./routes/outgoing";
+import remarksRoutes from "./routes/remarks";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
@@ -82,6 +83,7 @@ app.use(`/api/${API_VERSION}/users`, userRoutes);
 app.use(`/api/${API_VERSION}/branches`, branchRoutes);
 app.use(`/api/${API_VERSION}/categories`, categoryRoutes);
 app.use(`/api/${API_VERSION}/outgoing`, outgoingRoutes);
+app.use(`/api/${API_VERSION}/remarks`, remarksRoutes);
 
 // Swagger Documentation
 if (process.env.NODE_ENV !== "production") {

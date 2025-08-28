@@ -25,6 +25,7 @@ import InventoryPage from "./pages/inventory/InventoryPage";
 import OutgoingPage from "./pages/outgoing/OutgoingPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import Sidebar from "./components/Sidebar";
+import NoticesPage from "./pages/notices/NoticesPage";
 
 // Import hooks and stores
 import { useAuthStore } from "./store/authStore";
@@ -214,6 +215,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <OutgoingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notices"
+                element={
+                  <ProtectedRoute>
+                    <NoticesPage />
                   </ProtectedRoute>
                 }
               />

@@ -30,10 +30,12 @@ import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import OutboundIcon from "@mui/icons-material/Outbound";
 import AddBoxIcon from "@mui/icons-material/AddBox";
 import UpgradeIcon from "@mui/icons-material/Upgrade";
+import CampaignIcon from "@mui/icons-material/Campaign";
 import { inventoryService } from "../services/inventory";
 import { salesService } from "../services/sales";
 import { outgoingService } from "../services/outgoing";
 import { categoriesService } from "../services/categories";
+import { remarksService } from "../services/remarks";
 import { Category, InventoryItem } from "../types";
 
 const Dashboard: React.FC = () => {
@@ -56,6 +58,7 @@ const Dashboard: React.FC = () => {
   const [openOutgoing, setOpenOutgoing] = useState(false);
   const [openAddItem, setOpenAddItem] = useState(false);
   const [openUpdateItem, setOpenUpdateItem] = useState(false);
+  const [openNotice, setOpenNotice] = useState(false);
 
   const [saleForm, setSaleForm] = useState<{
     itemName: string;
@@ -81,6 +84,8 @@ const Dashboard: React.FC = () => {
     categoryName?: string;
     inventoryQuantity?: number;
   }>({ name: "" });
+
+  const [noticeMessage, setNoticeMessage] = useState("");
 
   const PAYMENT_OPTIONS: Array<"Cash" | "Mobile Money" | "Card"> = [
     "Cash",
@@ -234,6 +239,18 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleSubmitNotice = async () => {
+    try {
+      if (!noticeMessage.trim()) return toast.error("Please enter a message");
+      await remarksService.create(noticeMessage.trim());
+      toast.success("Notice posted");
+      setOpenNotice(false);
+      setNoticeMessage("");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message || "Failed to post notice");
+    }
+  };
+
   return (
     <Box>
       <Toolbar />
@@ -324,6 +341,13 @@ const Dashboard: React.FC = () => {
                     onClick={() => setOpenUpdateItem(true)}
                   >
                     Update Item
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<CampaignIcon />}
+                    onClick={() => setOpenNotice(true)}
+                  >
+                    Add Notice
                   </Button>
                   <Box sx={{ flexGrow: 1 }} />
                   <Button variant="text" onClick={logout} color="error">
@@ -626,6 +650,33 @@ const Dashboard: React.FC = () => {
           <Button onClick={() => setOpenUpdateItem(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleSubmitUpdateItem}>
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Notice Dialog */}
+      <Dialog
+        open={openNotice}
+        onClose={() => setOpenNotice(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Post Notice</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Message"
+            value={noticeMessage}
+            onChange={(e) => setNoticeMessage(e.target.value)}
+            fullWidth
+            multiline
+            minRows={4}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenNotice(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSubmitNotice}>
+            Post
           </Button>
         </DialogActions>
       </Dialog>
