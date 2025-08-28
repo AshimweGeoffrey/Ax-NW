@@ -25,29 +25,27 @@ export const authenticateToken = async (
       throw createError("Access token required", 401);
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      userId: string;
+      name: string;
+      email?: string;
+      role?: string;
+    };
 
-    // Get user from database to ensure they still exist and are active
+    // Get user from database
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        accessControl: true,
-        isActive: true,
-      },
+      where: { name: decoded.name },
     });
 
-    if (!user || !user.isActive) {
-      throw createError("User not found or inactive", 401);
+    if (!user) {
+      throw createError("User not found", 401);
     }
 
     req.user = {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.accessControl || "staff",
+      role: user.accessControl || "Staff",
     };
 
     next();
@@ -61,15 +59,10 @@ export const authenticateToken = async (
 };
 
 export const requireRole = (allowedRoles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return next(createError("Authentication required", 401));
-    }
-
-    if (!allowedRoles.includes(req.user.role)) {
+  return (req: AuthRequest, _res: Response, next: NextFunction) => {
+    if (!req.user) return next(createError("Authentication required", 401));
+    if (!allowedRoles.includes(req.user.role))
       return next(createError("Insufficient permissions", 403));
-    }
-
     next();
   };
 };

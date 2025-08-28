@@ -19,6 +19,7 @@ const analytics_1 = __importDefault(require("./routes/analytics"));
 const users_1 = __importDefault(require("./routes/users"));
 const branches_1 = __importDefault(require("./routes/branches"));
 const categories_1 = __importDefault(require("./routes/categories"));
+const outgoing_1 = __importDefault(require("./routes/outgoing"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const notFound_1 = require("./middleware/notFound");
 const requestLogger_1 = require("./middleware/requestLogger");
@@ -63,6 +64,7 @@ app.use(`/api/${API_VERSION}/analytics`, analytics_1.default);
 app.use(`/api/${API_VERSION}/users`, users_1.default);
 app.use(`/api/${API_VERSION}/branches`, branches_1.default);
 app.use(`/api/${API_VERSION}/categories`, categories_1.default);
+app.use(`/api/${API_VERSION}/outgoing`, outgoing_1.default);
 if (process.env.NODE_ENV !== "production") {
     const swaggerJsdoc = require("swagger-jsdoc");
     const swaggerUi = require("swagger-ui-express");

@@ -8,60 +8,42 @@ const zod_1 = require("zod");
 const database_1 = require("../utils/database");
 const errorHandler_1 = require("../middleware/errorHandler");
 const auth_1 = require("../middleware/auth");
+const crypto_1 = require("crypto");
 const router = express_1.default.Router();
 router.use(auth_1.authenticateToken);
 const createInventorySchema = zod_1.z.object({
     name: zod_1.z.string().min(1).max(64),
-    sku: zod_1.z.string().optional(),
     categoryName: zod_1.z.string().min(1).max(32),
     inventoryQuantity: zod_1.z.number().int().min(0).default(0),
-    unitCost: zod_1.z.number().min(0).default(0),
-    sellingPrice: zod_1.z.number().min(0).default(0),
-    minStockLevel: zod_1.z.number().int().min(0).default(5),
-    maxStockLevel: zod_1.z.number().int().min(1).default(1000),
-    supplier: zod_1.z.string().optional(),
-    location: zod_1.z.string().optional(),
 });
-const updateInventorySchema = createInventorySchema.partial();
-const adjustStockSchema = zod_1.z.object({
-    quantity: zod_1.z.number().int(),
-    type: zod_1.z.enum(["adjustment", "restock"]),
+const updateInventorySchema = zod_1.z.object({
+    categoryName: zod_1.z.string().min(1).max(32).optional(),
+    inventoryQuantity: zod_1.z.number().int().min(0).optional(),
+});
+const adjustSchema = zod_1.z.object({
+    quantityChange: zod_1.z.number().int(),
     notes: zod_1.z.string().optional(),
 });
 router.get("/", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const search = req.query.search;
-    const category = req.query.category;
+    const page = parseInt(req.query.page || "1");
+    const limit = parseInt(req.query.limit || "20");
+    const search = req.query.search || "";
+    const category = req.query.category || "";
     const lowStock = req.query.lowStock === "true";
     const skip = (page - 1) * limit;
     const where = {};
-    if (search) {
-        where.OR = [
-            { name: { contains: search, mode: "insensitive" } },
-            { sku: { contains: search, mode: "insensitive" } },
-        ];
-    }
-    if (category) {
+    if (search)
+        where.name = { contains: search, mode: "insensitive" };
+    if (category)
         where.categoryName = category;
-    }
-    if (lowStock) {
-        where.inventoryQuantity = {
-            lte: database_1.prisma.$queryRaw `inventory_quantity <= min_stock_level`,
-        };
-    }
+    if (lowStock)
+        where.inventoryQuantity = { lt: 3 };
     const [items, total] = await Promise.all([
         database_1.prisma.inventory.findMany({
             where,
-            include: {
-                category: true,
-                creator: {
-                    select: { name: true, email: true },
-                },
-            },
             skip,
             take: limit,
-            orderBy: { createdAt: "desc" },
+            orderBy: { name: "asc" },
         }),
         database_1.prisma.inventory.count({ where }),
     ]);
@@ -78,24 +60,9 @@ router.get("/", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req
         },
     });
 }));
-router.get("/:id", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.get("/:name", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const item = await database_1.prisma.inventory.findUnique({
-        where: { id: req.params.id },
-        include: {
-            category: true,
-            creator: {
-                select: { name: true, email: true },
-            },
-            stockMovements: {
-                take: 10,
-                orderBy: { movementDate: "desc" },
-                include: {
-                    user: {
-                        select: { name: true },
-                    },
-                },
-            },
-        },
+        where: { name: req.params.name },
     });
     if (!item) {
         throw (0, errorHandler_1.createError)("Item not found", 404);
@@ -106,49 +73,34 @@ router.get("/:id", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (
     });
 }));
 router.post("/", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const validatedData = createInventorySchema.parse(req.body);
+    const data = createInventorySchema.parse(req.body);
     const category = await database_1.prisma.category.findUnique({
-        where: { name: validatedData.categoryName },
+        where: { name: data.categoryName },
     });
     if (!category) {
         throw (0, errorHandler_1.createError)("Category not found", 400);
     }
-    const existingItem = await database_1.prisma.inventory.findUnique({
-        where: { name: validatedData.name },
+    const existing = await database_1.prisma.inventory.findUnique({
+        where: { name: data.name },
     });
-    if (existingItem) {
+    if (existing) {
         throw (0, errorHandler_1.createError)("Item with this name already exists", 400);
-    }
-    if (validatedData.sku) {
-        const existingSku = await database_1.prisma.inventory.findUnique({
-            where: { sku: validatedData.sku },
-        });
-        if (existingSku) {
-            throw (0, errorHandler_1.createError)("Item with this SKU already exists", 400);
-        }
     }
     const item = await database_1.prisma.inventory.create({
         data: {
-            ...validatedData,
-            createdBy: req.user.id,
+            name: data.name,
+            id: (0, crypto_1.randomUUID)(),
+            categoryName: data.categoryName,
+            inventoryQuantity: data.inventoryQuantity,
             incomingTimeStamp: new Date(),
         },
-        include: {
-            category: true,
-            creator: {
-                select: { name: true, email: true },
-            },
-        },
     });
-    if (validatedData.inventoryQuantity > 0) {
-        await database_1.prisma.stockMovement.create({
+    if (data.inventoryQuantity > 0) {
+        await database_1.prisma.remark.create({
             data: {
-                itemId: item.id,
-                movementType: "in",
-                quantity: validatedData.inventoryQuantity,
-                referenceType: "adjustment",
-                notes: "Initial stock",
-                userId: req.user.id,
+                id: (0, crypto_1.randomUUID)(),
+                timeStamp: new Date(),
+                message: `Initial stock for ${item.name}: +${data.inventoryQuantity}${req.user ? ` by ${req.user.name}` : ""}`,
             },
         });
     }
@@ -157,100 +109,81 @@ router.post("/", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (re
         data: { item },
     });
 }));
-router.put("/:id", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const validatedData = updateInventorySchema.parse(req.body);
-    const existingItem = await database_1.prisma.inventory.findUnique({
-        where: { id: req.params.id },
+router.put("/:name", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const changes = updateInventorySchema.parse(req.body);
+    const exist = await database_1.prisma.inventory.findUnique({
+        where: { name: req.params.name },
     });
-    if (!existingItem) {
+    if (!exist) {
         throw (0, errorHandler_1.createError)("Item not found", 404);
     }
-    if (validatedData.categoryName) {
-        const category = await database_1.prisma.category.findUnique({
-            where: { name: validatedData.categoryName },
-        });
-        if (!category) {
-            throw (0, errorHandler_1.createError)("Category not found", 400);
-        }
-    }
-    const item = await database_1.prisma.inventory.update({
-        where: { id: req.params.id },
-        data: validatedData,
-        include: {
-            category: true,
-            creator: {
-                select: { name: true, email: true },
-            },
-        },
+    const updated = await database_1.prisma.inventory.update({
+        where: { name: req.params.name },
+        data: changes,
     });
     res.json({
         success: true,
-        data: { item },
+        data: { item: updated },
     });
 }));
-router.post("/:id/adjust", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const { quantity, type, notes } = adjustStockSchema.parse(req.body);
+router.post("/:name/adjust", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { quantityChange, notes } = adjustSchema.parse(req.body);
     const item = await database_1.prisma.inventory.findUnique({
-        where: { id: req.params.id },
+        where: { name: req.params.name },
     });
     if (!item) {
         throw (0, errorHandler_1.createError)("Item not found", 404);
     }
-    const newQuantity = item.inventoryQuantity + quantity;
-    if (newQuantity < 0) {
-        throw (0, errorHandler_1.createError)("Insufficient stock for this adjustment", 400);
+    if (quantityChange < 0 && req.user?.role !== "Administrator") {
+        throw (0, errorHandler_1.createError)("Only administrators can reduce stock (negative input)", 403);
     }
-    const updatedItem = await database_1.prisma.inventory.update({
-        where: { id: req.params.id },
-        data: { inventoryQuantity: newQuantity },
-        include: { category: true },
+    const newQty = item.inventoryQuantity + quantityChange;
+    if (newQty < 0) {
+        throw (0, errorHandler_1.createError)("Resulting stock cannot be negative", 400);
+    }
+    const updated = await database_1.prisma.inventory.update({
+        where: { name: item.name },
+        data: { inventoryQuantity: newQty },
     });
-    await database_1.prisma.stockMovement.create({
+    await database_1.prisma.remark.create({
         data: {
-            itemId: item.id,
-            movementType: quantity > 0 ? "in" : "out",
-            quantity: Math.abs(quantity),
-            referenceType: type,
-            notes,
-            userId: req.user.id,
+            id: (0, crypto_1.randomUUID)(),
+            timeStamp: new Date(),
+            message: `Adjust ${item.name}: ${quantityChange > 0 ? "+" : ""}${quantityChange} by ${req.user?.name || "system"}${notes ? ` (${notes})` : ""}`,
         },
     });
     res.json({
         success: true,
-        data: { item: updatedItem },
+        data: { item: updated },
         message: "Stock adjusted successfully",
     });
 }));
-router.delete("/:id", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.delete("/:name", auth_1.requireAdmin, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const item = await database_1.prisma.inventory.findUnique({
-        where: { id: req.params.id },
+        where: { name: req.params.name },
     });
     if (!item) {
         throw (0, errorHandler_1.createError)("Item not found", 404);
     }
-    const [salesCount, movementsCount] = await Promise.all([
-        database_1.prisma.saleWeekly.count({ where: { itemName: item.name } }),
-        database_1.prisma.stockMovement.count({ where: { itemId: item.id } }),
-    ]);
-    if (salesCount > 0 || movementsCount > 0) {
-        throw (0, errorHandler_1.createError)("Cannot delete item with existing sales or stock movements", 400);
+    const salesCount = await database_1.prisma.saleWeekly.count({
+        where: { itemName: item.name },
+    });
+    if (salesCount > 0) {
+        throw (0, errorHandler_1.createError)("Cannot delete item with existing sales", 400);
     }
     await database_1.prisma.inventory.delete({
-        where: { id: req.params.id },
+        where: { name: item.name },
     });
     res.json({
         success: true,
         message: "Item deleted successfully",
     });
 }));
-router.get("/reports/low-stock", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const items = await database_1.prisma.$queryRaw `
-    SELECT i.*, c.name as categoryName, c.color_code as categoryColor
-    FROM inventory i
-    JOIN category c ON i.category_name = c.name
-    WHERE i.inventory_quantity <= i.min_stock_level
-    ORDER BY (i.inventory_quantity / i.min_stock_level) ASC
-  `;
+router.get("/reports/low-stock", auth_1.requireStaff, (0, errorHandler_1.asyncHandler)(async (_req, res) => {
+    const items = await database_1.prisma.inventory.findMany({
+        where: { inventoryQuantity: { lt: 3 } },
+        orderBy: { inventoryQuantity: "asc" },
+    });
     res.json({
         success: true,
         data: { items },

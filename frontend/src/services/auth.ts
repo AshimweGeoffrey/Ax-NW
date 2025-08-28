@@ -40,7 +40,7 @@ export const authService = {
       refreshToken: string;
     }>
   > {
-    const response = await api.post("/auth/refresh", { refreshToken });
+    const response = await api.post("/auth/refresh-token", { refreshToken });
     return response.data;
   },
 
