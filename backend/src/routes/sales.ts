@@ -5,6 +5,7 @@ import { asyncHandler, createError } from "../middleware/errorHandler";
 import {
   authenticateToken,
   requireStaff,
+  requireAdmin,
   AuthRequest,
 } from "../middleware/auth";
 import { randomUUID } from "crypto";
@@ -16,7 +17,14 @@ const createSaleSchema = z.object({
   itemName: z.string().min(1).max(64),
   quantity: z.number().int().min(1),
   price: z.number().min(0),
-  paymentMethod: z.enum(["Cash", "Mobile Money", "Pos"]),
+  paymentMethod: z.enum(["Cash", "Mobile Money", "Card"]),
+});
+
+const updateSaleSchema = z.object({
+  itemName: z.string().min(1).max(64).optional(),
+  quantity: z.number().int().min(1).optional(),
+  price: z.number().min(0).optional(),
+  paymentMethod: z.enum(["Cash", "Mobile Money", "Card"]).optional(),
 });
 
 /**
@@ -33,7 +41,7 @@ router.get(
   requireStaff,
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const page = parseInt((req.query.page as string) || "1");
-    const limit = parseInt((req.query.limit as string) || "20");
+    const limit = parseInt((req.query.limit as string) || "100");
     const startDate = req.query.startDate as string | undefined;
     const endDate = req.query.endDate as string | undefined;
     const paymentMethod = req.query.paymentMethod as string | undefined;
@@ -113,9 +121,15 @@ router.post(
         400
       );
 
-    const pay = await prisma.paymentMethod.findUnique({
-      where: { name: data.paymentMethod },
+    // Support DBs that still use 'Pos' by mapping 'Card' -> 'Pos' if 'Card' not found
+    let methodToUse = data.paymentMethod;
+    let pay = await prisma.paymentMethod.findUnique({
+      where: { name: methodToUse },
     });
+    if (!pay && data.paymentMethod === "Card") {
+      methodToUse = "Pos";
+      pay = await prisma.paymentMethod.findUnique({ where: { name: "Pos" } });
+    }
     if (!pay) throw createError("Payment method not found", 400);
 
     const sale = await prisma.saleWeekly.create({
@@ -127,17 +141,78 @@ router.post(
         price: Math.round(data.price),
         userName: req.user?.name || null,
         timeStamp: new Date(),
-        paymentMethod: data.paymentMethod,
+        paymentMethod: methodToUse,
       },
     });
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        data: { sale },
-        message: "Sale created successfully",
+    res.status(201).json({
+      success: true,
+      data: { sale },
+      message: "Sale created successfully",
+    });
+  })
+);
+
+// Update sale (admin only)
+router.put(
+  "/:id",
+  requireAdmin,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const changes = updateSaleSchema.parse(req.body);
+    const existing = await prisma.saleWeekly.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!existing) throw createError("Sale not found", 404);
+
+    // Validate item if being changed
+    let categoryToUse = existing.category;
+    if (changes.itemName) {
+      const inv = await prisma.inventory.findUnique({
+        where: { name: changes.itemName },
       });
+      if (!inv) throw createError("Item not found", 404);
+      categoryToUse = inv.categoryName;
+    }
+
+    // Validate payment method if being changed
+    let methodToUse = changes.paymentMethod ?? existing.paymentMethod;
+    if (changes.paymentMethod) {
+      let pay = await prisma.paymentMethod.findUnique({
+        where: { name: methodToUse },
+      });
+      if (!pay && changes.paymentMethod === "Card") {
+        methodToUse = "Pos";
+        pay = await prisma.paymentMethod.findUnique({ where: { name: "Pos" } });
+      }
+      if (!pay) throw createError("Payment method not found", 400);
+    }
+
+    const updated = await prisma.saleWeekly.update({
+      where: { id: req.params.id },
+      data: {
+        itemName: changes.itemName ?? existing.itemName,
+        category: categoryToUse,
+        quantity: changes.quantity ?? existing.quantity,
+        price: changes.price !== undefined ? Math.round(changes.price) : existing.price,
+        paymentMethod: methodToUse,
+      },
+    });
+
+    res.json({ success: true, data: { sale: updated }, message: "Sale updated" });
+  })
+);
+
+// Delete sale (admin only)
+router.delete(
+  "/:id",
+  requireAdmin,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const existing = await prisma.saleWeekly.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!existing) throw createError("Sale not found", 404);
+    await prisma.saleWeekly.delete({ where: { id: req.params.id } });
+    res.json({ success: true, data: { success: true }, message: "Sale deleted" });
   })
 );
 
@@ -161,22 +236,26 @@ router.get(
       ? new Date(req.query.endDate as string)
       : new Date();
 
-    const [totalSales, totalRevenueAgg, salesByPaymentMethodRaw, salesByDayRaw] =
-      await Promise.all([
-        prisma.saleWeekly.count({
-          where: { timeStamp: { gte: startDate, lte: endDate } },
-        }),
-        prisma.saleWeekly.aggregate({
-          where: { timeStamp: { gte: startDate, lte: endDate } },
-          _sum: { price: true },
-        }),
-        prisma.saleWeekly.groupBy({
-          by: ["paymentMethod"],
-          where: { timeStamp: { gte: startDate, lte: endDate } },
-          _sum: { price: true },
-          _count: true,
-        }),
-        prisma.$queryRaw<any[]>`
+    const [
+      totalSales,
+      totalRevenueAgg,
+      salesByPaymentMethodRaw,
+      salesByDayRaw,
+    ] = await Promise.all([
+      prisma.saleWeekly.count({
+        where: { timeStamp: { gte: startDate, lte: endDate } },
+      }),
+      prisma.saleWeekly.aggregate({
+        where: { timeStamp: { gte: startDate, lte: endDate } },
+        _sum: { price: true },
+      }),
+      prisma.saleWeekly.groupBy({
+        by: ["paymentMethod"],
+        where: { timeStamp: { gte: startDate, lte: endDate } },
+        _sum: { price: true },
+        _count: true,
+      }),
+      prisma.$queryRaw<any[]>`
           SELECT DATE(time_stamp) as date,
                  COUNT(*) as sales_count,
                  SUM(price) as total_revenue,
@@ -186,7 +265,7 @@ router.get(
           GROUP BY DATE(time_stamp)
           ORDER BY date ASC
         `,
-      ]);
+    ]);
 
     const totalRevenue = Number(totalRevenueAgg._sum.price || 0);
 

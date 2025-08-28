@@ -24,9 +24,22 @@ export const salesService = {
     itemName: string;
     quantity: number;
     price: number;
-    paymentMethod: "Cash" | "Mobile Money" | "Pos";
+    paymentMethod: "Cash" | "Mobile Money" | "Card";
   }): Promise<ApiResponse<{ sale: Sale }>> {
     const res = await api.post("/sales", payload);
+    return res.data;
+  },
+  async remove(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    const res = await api.delete(`/sales/${id}`);
+    return res.data;
+  },
+  async update(id: string, payload: Partial<{
+    itemName: string;
+    quantity: number;
+    price: number;
+    paymentMethod: "Cash" | "Mobile Money" | "Card";
+  }>): Promise<ApiResponse<{ sale: Sale }>> {
+    const res = await api.put(`/sales/${id}`, payload);
     return res.data;
   },
   async summary(params?: {

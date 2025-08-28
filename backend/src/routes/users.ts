@@ -46,7 +46,7 @@ router.get(
   requireManager,
   asyncHandler(async (req: any, res: any) => {
     const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const limit = parseInt(req.query.limit as string) || 100;
     const search = req.query.search as string;
     const role = req.query.role as string;
 

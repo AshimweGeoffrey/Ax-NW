@@ -23,7 +23,7 @@ router.get(
   requireStaff,
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const page = parseInt((req.query.page as string) || "1");
-    const limit = parseInt((req.query.limit as string) || "20");
+    const limit = parseInt((req.query.limit as string) || "100");
     const startDate = req.query.startDate as string | undefined;
     const endDate = req.query.endDate as string | undefined;
     const product = req.query.product as string | undefined;

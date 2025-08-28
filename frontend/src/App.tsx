@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,7 +6,15 @@ import {
   Navigate,
 } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { CssBaseline, Box } from "@mui/material";
+import {
+  CssBaseline,
+  Box,
+  AppBar,
+  Toolbar,
+  IconButton,
+  Typography,
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
 import { Toaster } from "react-hot-toast";
 
 // Import components (to be created)
@@ -16,6 +24,7 @@ import SalesPage from "./pages/sales/SalesPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import OutgoingPage from "./pages/outgoing/OutgoingPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
+import Sidebar from "./components/Sidebar";
 
 // Import hooks and stores
 import { useAuthStore } from "./store/authStore";
@@ -23,7 +32,7 @@ import { useAuthStore } from "./store/authStore";
 // Create theme
 const theme = createTheme({
   palette: {
-    mode: "light",
+    mode: "dark",
     primary: {
       main: "#40c793",
     },
@@ -31,8 +40,8 @@ const theme = createTheme({
       main: "#dc004e",
     },
     background: {
-      default: "#f5f5f5",
-      paper: "#ffffff",
+      default: "#0f1115",
+      paper: "#151821",
     },
   },
   typography: {
@@ -51,7 +60,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 12,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
         },
       },
     },
@@ -84,6 +93,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 function App() {
   const { isAuthenticated, user, getCurrentUser } = useAuthStore();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && !user) {
@@ -91,69 +101,137 @@ function App() {
     }
   }, [isAuthenticated, user, getCurrentUser]);
 
+  // Ensure browser tab title is set correctly
+  useEffect(() => {
+    document.title = "Ax Stock";
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Box sx={{ display: "flex", minHeight: "100vh" }}>
-          <Routes>
-            {/* Public Routes */}
-            <Route
-              path="/login"
-              element={
-                <PublicRoute>
-                  <Login />
-                </PublicRoute>
-              }
+          {isAuthenticated && (
+            <Sidebar
+              mobileOpen={mobileOpen}
+              onClose={() => setMobileOpen(false)}
             />
+          )}
+          {isAuthenticated && (
+            <AppBar
+              position="fixed"
+              color="default"
+              elevation={0}
+              sx={{
+                zIndex: (theme) => theme.zIndex.drawer + 1,
+                width: "100%",
+                ml: 0,
+                borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
+                bgcolor: "background.paper",
+                display: { xs: "block", md: "none" },
+              }}
+            >
+              <Toolbar>
+                <IconButton
+                  color="inherit"
+                  edge="start"
+                  onClick={() => setMobileOpen(true)}
+                  sx={{ mr: 2, display: { md: "none" } }}
+                >
+                  <MenuIcon />
+                </IconButton>
+                <Box
+                  component="img"
+                  src={`${process.env.PUBLIC_URL}/icon.png`}
+                  alt="Ax Stock Logo"
+                  sx={{ width: 24, height: 24, borderRadius: 0.5 }}
+                />
+                <Typography
+                  variant="h6"
+                  noWrap
+                  sx={{
+                    display: { xs: "block", md: "none" },
+                    ml: 1,
+                    fontFamily:
+                      '"Abnes", "Inter", "Roboto", "Arial", sans-serif',
+                    fontWeight: 700,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  Ax Stock
+                </Typography>
+              </Toolbar>
+            </AppBar>
+          )}
+          <Box
+            component="main"
+            sx={{
+              flexGrow: 1,
+              pl: isAuthenticated ? { xs: 0, md: "60px" } : 0,
+            }}
+          >
+            {isAuthenticated && (
+              <Toolbar sx={{ display: { xs: "block", md: "none" } }} />
+            )}
+            <Routes>
+              {/* Public Routes */}
+              <Route
+                path="/login"
+                element={
+                  <PublicRoute>
+                    <Login />
+                  </PublicRoute>
+                }
+              />
 
-            {/* Protected Routes */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/sales"
-              element={
-                <ProtectedRoute>
-                  <SalesPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/inventory"
-              element={
-                <ProtectedRoute>
-                  <InventoryPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/outgoing"
-              element={
-                <ProtectedRoute>
-                  <OutgoingPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/analytics"
-              element={
-                <ProtectedRoute>
-                  <AdminRoute>
-                    <AnalyticsPage />
-                  </AdminRoute>
-                </ProtectedRoute>
-              }
-            />
+              {/* Protected Routes */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/sales"
+                element={
+                  <ProtectedRoute>
+                    <SalesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inventory"
+                element={
+                  <ProtectedRoute>
+                    <InventoryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/outgoing"
+                element={
+                  <ProtectedRoute>
+                    <OutgoingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <ProtectedRoute>
+                    <AdminRoute>
+                      <AnalyticsPage />
+                    </AdminRoute>
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Fallback route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* Fallback route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Box>
         </Box>
       </Router>
 
@@ -163,7 +241,7 @@ function App() {
         toastOptions={{
           duration: 4000,
           style: {
-            background: "#363636",
+            background: "#222",
             color: "#fff",
           },
           success: {

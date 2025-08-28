@@ -24,23 +24,29 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
-import Sidebar from "../../components/Sidebar";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import toast from "react-hot-toast";
 import { salesService } from "../../services/sales";
 import { inventoryService } from "../../services/inventory";
 import { InventoryItem, Sale } from "../../types";
+import { useAuthStore } from "../../store/authStore";
+import { useNavigate } from "react-router-dom";
 
-const PAGE_SIZE = 10 as const;
-const PAYMENT_OPTIONS: Array<"Cash" | "Mobile Money" | "Pos"> = [
+const PAGE_SIZE = 100 as const;
+const PAYMENT_OPTIONS: Array<"Cash" | "Mobile Money" | "Card"> = [
   "Cash",
   "Mobile Money",
-  "Pos",
+  "Card",
 ];
 
 const SalesPage: React.FC = () => {
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
   // Filters and pagination
   const [page, setPage] = useState(1);
   const [product, setProduct] = useState("");
@@ -60,7 +66,18 @@ const SalesPage: React.FC = () => {
     itemName: string;
     quantity: number;
     price: number;
-    paymentMethod: "Cash" | "Mobile Money" | "Pos";
+    paymentMethod: "Cash" | "Mobile Money" | "Card";
+  }>({ itemName: "", quantity: 1, price: 0, paymentMethod: "Cash" });
+
+  const [openEdit, setOpenEdit] = useState<{
+    open: boolean;
+    sale: Sale | null;
+  }>({ open: false, sale: null });
+  const [editForm, setEditForm] = useState<{
+    itemName: string;
+    quantity: number;
+    price: number;
+    paymentMethod: "Cash" | "Mobile Money" | "Card";
   }>({ itemName: "", quantity: 1, price: 0, paymentMethod: "Cash" });
 
   const totalPages = useMemo(
@@ -135,26 +152,65 @@ const SalesPage: React.FC = () => {
     }
   };
 
+  const handleEdit = async () => {
+    if (!openEdit.sale) return;
+    if (user?.role !== "Administrator") {
+      toast.error("Only administrators can edit sales");
+      return;
+    }
+    try {
+      await salesService.update(openEdit.sale.id, editForm);
+      toast.success("Sale updated");
+      setOpenEdit({ open: false, sale: null });
+      loadSales();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message || "Failed to update sale");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (user?.role !== "Administrator") {
+      toast.error("Only administrators can delete sales");
+      return;
+    }
+    try {
+      await salesService.remove(id);
+      toast.success("Sale deleted");
+      loadSales();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error?.message || "Failed to delete sale");
+    }
+  };
+
   const formatDateTime = (d?: Date) => (d ? new Date(d).toLocaleString() : "");
   const currency = (n: number) =>
     new Intl.NumberFormat(undefined, {
       style: "currency",
-      currency: "USD",
+      currency: "RWF",
     }).format(n || 0);
 
+  const openEditDialog = (s: Sale) => {
+    setOpenEdit({ open: true, sale: s });
+    setEditForm({
+      itemName: s.itemName,
+      quantity: s.quantity,
+      price: s.price,
+      paymentMethod: (s.paymentMethod as any) || "Cash",
+    });
+  };
+
   return (
-    <Box sx={{ display: "flex" }}>
-      <Sidebar />
-      <Box component="main" sx={{ flexGrow: 1, p: 3, ml: "240px" }}>
-        <Toolbar />
-        <Container maxWidth="lg">
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{ mb: 3 }}
-          >
-            <Typography variant="h4">Sales</Typography>
+    <Box>
+      <Toolbar />
+      <Container maxWidth="lg">
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ mb: 3 }}
+        >
+          <Typography variant="h4">Sales</Typography>
+          <Stack direction="row" spacing={1}>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -162,123 +218,146 @@ const SalesPage: React.FC = () => {
             >
               New Sale
             </Button>
+            <Button variant="outlined" onClick={() => navigate("/outgoing")}>
+              Record Outgoing
+            </Button>
           </Stack>
+        </Stack>
 
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Stack
-                direction={{ xs: "column", md: "row" }}
-                spacing={2}
-                alignItems={{ xs: "stretch", md: "center" }}
-              >
-                <TextField
-                  placeholder="Product name"
-                  value={product}
-                  onChange={(e) => setProduct(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
+              alignItems={{ xs: "stretch", md: "center" }}
+            >
+              <TextField
+                placeholder="Product name"
+                value={product}
+                onChange={(e) => setProduct(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ flex: 1 }}
+              />
+
+              <FormControl sx={{ minWidth: 200 }}>
+                <InputLabel id="pay-label">Payment</InputLabel>
+                <Select
+                  labelId="pay-label"
+                  label="Payment"
+                  value={paymentMethod}
+                  onChange={(e) => {
+                    setPaymentMethod(e.target.value);
+                    setPage(1);
                   }}
-                  sx={{ flex: 1 }}
-                />
-
-                <FormControl sx={{ minWidth: 200 }}>
-                  <InputLabel id="pay-label">Payment</InputLabel>
-                  <Select
-                    labelId="pay-label"
-                    label="Payment"
-                    value={paymentMethod}
-                    onChange={(e) => {
-                      setPaymentMethod(e.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <MenuItem value="">
-                      <em>All</em>
+                >
+                  <MenuItem value="">
+                    <em>All</em>
+                  </MenuItem>
+                  {PAYMENT_OPTIONS.map((p) => (
+                    <MenuItem key={p} value={p}>
+                      {p}
                     </MenuItem>
-                    {PAYMENT_OPTIONS.map((p) => (
-                      <MenuItem key={p} value={p}>
-                        {p}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                  ))}
+                </Select>
+              </FormControl>
 
-                <TextField
-                  label="Start date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setPage(1);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="End date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setPage(1);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Stack>
-            </CardContent>
-          </Card>
+              <TextField
+                label="Start date"
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setPage(1);
+                }}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="End date"
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setPage(1);
+                }}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Stack>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardContent>
-              <Table size="small">
-                <TableHead>
+        <Card>
+          <CardContent>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Item</TableCell>
+                  <TableCell align="right">Qty</TableCell>
+                  <TableCell align="right">Price</TableCell>
+                  <TableCell>Payment</TableCell>
+                  <TableCell>User</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
                   <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Item</TableCell>
-                    <TableCell align="right">Qty</TableCell>
-                    <TableCell align="right">Price</TableCell>
-                    <TableCell>Payment</TableCell>
-                    <TableCell>User</TableCell>
+                    <TableCell colSpan={7}>Loading…</TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={6}>Loading…</TableCell>
+                ) : rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7}>No sales found</TableCell>
+                  </TableRow>
+                ) : (
+                  rows.map((s) => (
+                    <TableRow key={s.id} hover>
+                      <TableCell>{formatDateTime(s.timeStamp)}</TableCell>
+                      <TableCell>{s.itemName}</TableCell>
+                      <TableCell align="right">{s.quantity}</TableCell>
+                      <TableCell align="right">{currency(s.price)}</TableCell>
+                      <TableCell>{s.paymentMethod}</TableCell>
+                      <TableCell>{s.userName || "-"}</TableCell>
+                      <TableCell align="right">
+                        <IconButton
+                          color="primary"
+                          title="Edit"
+                          onClick={() => openEditDialog(s)}
+                          disabled={user?.role !== "Administrator"}
+                          sx={{ mr: 1 }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          color="error"
+                          title="Delete"
+                          onClick={() => handleDelete(s.id)}
+                          disabled={user?.role !== "Administrator"}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
                     </TableRow>
-                  ) : rows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6}>No sales found</TableCell>
-                    </TableRow>
-                  ) : (
-                    rows.map((s) => (
-                      <TableRow key={s.id} hover>
-                        <TableCell>{formatDateTime(s.timeStamp)}</TableCell>
-                        <TableCell>{s.itemName}</TableCell>
-                        <TableCell align="right">{s.quantity}</TableCell>
-                        <TableCell align="right">{currency(s.price)}</TableCell>
-                        <TableCell>{s.paymentMethod}</TableCell>
-                        <TableCell>{s.userName || "-"}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-                <Pagination
-                  page={page}
-                  count={totalPages}
-                  onChange={(_e, p) => setPage(p)}
-                  color="primary"
-                />
-              </Stack>
-            </CardContent>
-          </Card>
-        </Container>
-      </Box>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
+              <Pagination
+                page={page}
+                count={totalPages}
+                onChange={(_e, p) => setPage(p)}
+                color="primary"
+              />
+            </Stack>
+          </CardContent>
+        </Card>
+      </Container>
 
       {/* Create Sale Dialog */}
       <Dialog
@@ -362,6 +441,85 @@ const SalesPage: React.FC = () => {
             onClick={handleCreate}
           >
             Create
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Sale Dialog */}
+      <Dialog
+        open={openEdit.open}
+        onClose={() => setOpenEdit({ open: false, sale: null })}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Edit Sale</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel id="edit-item">Item</InputLabel>
+              <Select
+                labelId="edit-item"
+                label="Item"
+                value={editForm.itemName}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, itemName: e.target.value }))
+                }
+              >
+                {items.map((it) => (
+                  <MenuItem key={it.id} value={it.name}>
+                    {it.name} (qty: {it.inventoryQuantity})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="Quantity"
+                type="number"
+                value={editForm.quantity}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, quantity: Number(e.target.value) }))
+                }
+                fullWidth
+              />
+              <TextField
+                label="Price"
+                type="number"
+                value={editForm.price}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, price: Number(e.target.value) }))
+                }
+                fullWidth
+              />
+            </Stack>
+            <FormControl fullWidth>
+              <InputLabel id="edit-pay">Payment Method</InputLabel>
+              <Select
+                labelId="edit-pay"
+                label="Payment Method"
+                value={editForm.paymentMethod}
+                onChange={(e) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    paymentMethod: e.target.value as any,
+                  }))
+                }
+              >
+                {PAYMENT_OPTIONS.map((p) => (
+                  <MenuItem key={p} value={p}>
+                    {p}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEdit({ open: false, sale: null })}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleEdit}>
+            Save
           </Button>
         </DialogActions>
       </Dialog>

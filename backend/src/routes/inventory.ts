@@ -44,7 +44,7 @@ router.get(
   requireStaff,
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const page = parseInt((req.query.page as string) || "1");
-    const limit = parseInt((req.query.limit as string) || "20");
+    const limit = parseInt((req.query.limit as string) || "100");
     const search = (req.query.search as string) || "";
     const category = (req.query.category as string) || "";
     const lowStock = req.query.lowStock === "true";

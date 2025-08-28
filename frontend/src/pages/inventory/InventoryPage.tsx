@@ -33,14 +33,13 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import RemoveIcon from "@mui/icons-material/RemoveCircleOutline";
 import DeleteIcon from "@mui/icons-material/Delete";
-import Sidebar from "../../components/Sidebar";
 import toast from "react-hot-toast";
 import { inventoryService } from "../../services/inventory";
 import { categoriesService } from "../../services/categories";
 import { InventoryItem, Category } from "../../types";
 import { useAuthStore } from "../../store/authStore";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 100;
 
 const InventoryPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -136,6 +135,10 @@ const InventoryPage: React.FC = () => {
   };
 
   const handleCreate = async () => {
+    if (user?.role !== "Administrator") {
+      toast.error("Only administrators can create items");
+      return;
+    }
     try {
       if (!newName.trim() || !newCategory) {
         toast.error("Name and category are required");
@@ -159,6 +162,10 @@ const InventoryPage: React.FC = () => {
     setOpenAdjust({ open: true, name });
 
   const handleAdjust = async () => {
+    if (user?.role !== "Administrator") {
+      toast.error("Only administrators can adjust inventory");
+      return;
+    }
     if (!openAdjust.name) return;
     try {
       const qty = Number(adjustQty) || 0;
@@ -183,6 +190,10 @@ const InventoryPage: React.FC = () => {
   };
 
   const handleDelete = async (name: string) => {
+    if (user?.role !== "Administrator") {
+      toast.error("Only administrators can delete items");
+      return;
+    }
     try {
       await inventoryService.remove(name);
       toast.success("Item deleted");
@@ -193,18 +204,17 @@ const InventoryPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: "flex" }}>
-      <Sidebar />
-      <Box component="main" sx={{ flexGrow: 1, p: 3, ml: "240px" }}>
-        <Toolbar />
-        <Container maxWidth="lg">
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{ mb: 3 }}
-          >
-            <Typography variant="h4">Inventory</Typography>
+    <Box>
+      <Toolbar />
+      <Container maxWidth="lg">
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ mb: 3 }}
+        >
+          <Typography variant="h4">Inventory</Typography>
+          {user?.role === "Administrator" && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -212,115 +222,117 @@ const InventoryPage: React.FC = () => {
             >
               New Item
             </Button>
-          </Stack>
+          )}
+        </Stack>
 
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={2}
-                alignItems={{ xs: "stretch", sm: "center" }}
-              >
-                <TextField
-                  placeholder="Search by name"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              alignItems={{ xs: "stretch", sm: "center" }}
+            >
+              <TextField
+                placeholder="Search by name"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ flex: 1 }}
+              />
+
+              <FormControl sx={{ minWidth: 200 }}>
+                <InputLabel id="category-label">Category</InputLabel>
+                <Select
+                  labelId="category-label"
+                  label="Category"
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    setPage(1);
                   }}
-                  sx={{ flex: 1 }}
-                />
+                >
+                  <MenuItem value="">
+                    <em>All</em>
+                  </MenuItem>
+                  {categories.map((c) => (
+                    <MenuItem key={c.id} value={c.name}>
+                      {c.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-                <FormControl sx={{ minWidth: 200 }}>
-                  <InputLabel id="category-label">Category</InputLabel>
-                  <Select
-                    labelId="category-label"
-                    label="Category"
-                    value={category}
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={lowStock}
                     onChange={(e) => {
-                      setCategory(e.target.value);
+                      setLowStock(e.target.checked);
                       setPage(1);
                     }}
-                  >
-                    <MenuItem value="">
-                      <em>All</em>
-                    </MenuItem>
-                    {categories.map((c) => (
-                      <MenuItem key={c.id} value={c.name}>
-                        {c.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                  />
+                }
+                label="Low stock (< 3)"
+              />
+            </Stack>
+          </CardContent>
+        </Card>
 
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={lowStock}
-                      onChange={(e) => {
-                        setLowStock(e.target.checked);
-                        setPage(1);
-                      }}
-                    />
-                  }
-                  label="Low stock (< 3)"
-                />
-              </Stack>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <Table size="small">
-                <TableHead>
+        <Card>
+          <CardContent>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Category</TableCell>
+                  <TableCell align="right">Quantity</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
                   <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell align="right">Quantity</TableCell>
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell colSpan={4}>Loading…</TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={4}>Loading…</TableCell>
-                    </TableRow>
-                  ) : items.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4}>No items found</TableCell>
-                    </TableRow>
-                  ) : (
-                    items.map((it) => (
-                      <TableRow
-                        key={it.id}
-                        hover
-                        selected={it.inventoryQuantity < 3}
+                ) : items.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4}>No items found</TableCell>
+                  </TableRow>
+                ) : (
+                  items.map((it) => (
+                    <TableRow
+                      key={it.id}
+                      hover
+                      selected={it.inventoryQuantity < 3}
+                    >
+                      <TableCell>{it.name}</TableCell>
+                      <TableCell>{it.categoryName}</TableCell>
+                      <TableCell
+                        align="right"
+                        style={{
+                          color:
+                            it.inventoryQuantity === 0
+                              ? "#d32f2f"
+                              : it.inventoryQuantity < 3
+                              ? "#ed6c02"
+                              : undefined,
+                        }}
                       >
-                        <TableCell>{it.name}</TableCell>
-                        <TableCell>{it.categoryName}</TableCell>
-                        <TableCell
-                          align="right"
-                          style={{
-                            color:
-                              it.inventoryQuantity === 0
-                                ? "#d32f2f"
-                                : it.inventoryQuantity < 3
-                                ? "#ed6c02"
-                                : undefined,
-                          }}
+                        {it.inventoryQuantity}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          justifyContent="flex-end"
                         >
-                          {it.inventoryQuantity}
-                        </TableCell>
-                        <TableCell align="right">
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            justifyContent="flex-end"
-                          >
+                          {user?.role === "Administrator" && (
                             <IconButton
                               color="primary"
                               title="Adjust"
@@ -328,34 +340,34 @@ const InventoryPage: React.FC = () => {
                             >
                               <EditIcon />
                             </IconButton>
-                            {user?.role === "Administrator" && (
-                              <IconButton
-                                color="error"
-                                title="Delete"
-                                onClick={() => handleDelete(it.name)}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            )}
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-                <Pagination
-                  page={page}
-                  count={totalPages}
-                  onChange={(_e, p) => setPage(p)}
-                  color="primary"
-                />
-              </Stack>
-            </CardContent>
-          </Card>
-        </Container>
-      </Box>
+                          )}
+                          {user?.role === "Administrator" && (
+                            <IconButton
+                              color="error"
+                              title="Delete"
+                              onClick={() => handleDelete(it.name)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          )}
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
+              <Pagination
+                page={page}
+                count={totalPages}
+                onChange={(_e, p) => setPage(p)}
+                color="primary"
+              />
+            </Stack>
+          </CardContent>
+        </Card>
+      </Container>
 
       {/* Create Dialog */}
       <Dialog
@@ -427,11 +439,6 @@ const InventoryPage: React.FC = () => {
               value={adjustNotes}
               onChange={(e) => setAdjustNotes(e.target.value)}
             />
-            {user?.role !== "Administrator" && adjustQty < 0 && (
-              <Typography color="error">
-                Only administrators can reduce stock.
-              </Typography>
-            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -442,6 +449,7 @@ const InventoryPage: React.FC = () => {
             variant="contained"
             startIcon={<RemoveIcon />}
             onClick={handleAdjust}
+            disabled={user?.role !== "Administrator"}
           >
             Apply
           </Button>
