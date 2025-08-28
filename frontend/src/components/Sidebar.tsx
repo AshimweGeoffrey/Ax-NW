@@ -14,6 +14,7 @@ import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import OutboundIcon from "@mui/icons-material/Outbound";
 import InsightsIcon from "@mui/icons-material/Insights";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 
@@ -39,6 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { label: "Sales", icon: <ShoppingCartIcon />, path: "/sales" },
     { label: "Inventory", icon: <InventoryIcon />, path: "/inventory" },
     { label: "Outgoing", icon: <OutboundIcon />, path: "/outgoing" },
+    { label: "Notices", icon: <NotificationsIcon />, path: "/notices" },
   ];
 
   const adminOnly = [
