@@ -25,15 +25,18 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
-import Sidebar from "../../components/Sidebar";
 import toast from "react-hot-toast";
 import { outgoingService, OutgoingItem } from "../../services/outgoing";
 import { inventoryService } from "../../services/inventory";
 import { InventoryItem } from "../../types";
+import { useAuthStore } from "../../store/authStore";
+import { useNavigate } from "react-router-dom";
 
-const PAGE_SIZE = 10 as const;
+const PAGE_SIZE = 100 as const;
 
 const OutgoingPage: React.FC = () => {
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
   // Filters and pagination
   const [page, setPage] = useState(1);
   const [product, setProduct] = useState("");
@@ -123,6 +126,10 @@ const OutgoingPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (user?.role !== "Administrator") {
+      toast.error("Only administrators can delete outgoing records");
+      return;
+    }
     try {
       await outgoingService.remove(id);
       toast.success("Outgoing removed");
@@ -137,18 +144,17 @@ const OutgoingPage: React.FC = () => {
   const formatDateTime = (d?: Date) => (d ? new Date(d).toLocaleString() : "");
 
   return (
-    <Box sx={{ display: "flex" }}>
-      <Sidebar />
-      <Box component="main" sx={{ flexGrow: 1, p: 3, ml: "240px" }}>
-        <Toolbar />
-        <Container maxWidth="lg">
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{ mb: 3 }}
-          >
-            <Typography variant="h4">Outgoing</Typography>
+    <Box>
+      <Toolbar />
+      <Container maxWidth="lg">
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ mb: 3 }}
+        >
+          <Typography variant="h4">Outgoing</Typography>
+          <Stack direction="row" spacing={1}>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -156,111 +162,115 @@ const OutgoingPage: React.FC = () => {
             >
               Record Outgoing
             </Button>
+            <Button variant="outlined" onClick={() => navigate("/sales")}>
+              Go to Sales
+            </Button>
           </Stack>
+        </Stack>
 
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Stack
-                direction={{ xs: "column", md: "row" }}
-                spacing={2}
-                alignItems={{ xs: "stretch", md: "center" }}
-              >
-                <TextField
-                  placeholder="Product name"
-                  value={product}
-                  onChange={(e) => setProduct(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ flex: 1 }}
-                />
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
+              alignItems={{ xs: "stretch", md: "center" }}
+            >
+              <TextField
+                placeholder="Product name"
+                value={product}
+                onChange={(e) => setProduct(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ flex: 1 }}
+              />
 
-                <TextField
-                  label="Start date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setPage(1);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="End date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setPage(1);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Stack>
-            </CardContent>
-          </Card>
+              <TextField
+                label="Start date"
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setPage(1);
+                }}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="End date"
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setPage(1);
+                }}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Stack>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardContent>
-              <Table size="small">
-                <TableHead>
+        <Card>
+          <CardContent>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Item</TableCell>
+                  <TableCell>Category</TableCell>
+                  <TableCell>User</TableCell>
+                  <TableCell>Branch</TableCell>
+                  <TableCell align="right">Qty</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
                   <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Item</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>User</TableCell>
-                    <TableCell>Branch</TableCell>
-                    <TableCell align="right">Qty</TableCell>
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell colSpan={7}>Loading…</TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7}>Loading…</TableCell>
+                ) : rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7}>No records found</TableCell>
+                  </TableRow>
+                ) : (
+                  rows.map((r) => (
+                    <TableRow key={r.id} hover>
+                      <TableCell>{formatDateTime(r.timeStamp)}</TableCell>
+                      <TableCell>{r.itemName}</TableCell>
+                      <TableCell>{r.categoryName}</TableCell>
+                      <TableCell>{r.userName || "-"}</TableCell>
+                      <TableCell>{r.branchName || "-"}</TableCell>
+                      <TableCell align="right">{r.quantity}</TableCell>
+                      <TableCell align="right">
+                        <IconButton
+                          color="error"
+                          onClick={() => handleDelete(r.id)}
+                          title="Delete"
+                          disabled={user?.role !== "Administrator"}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
                     </TableRow>
-                  ) : rows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7}>No records found</TableCell>
-                    </TableRow>
-                  ) : (
-                    rows.map((r) => (
-                      <TableRow key={r.id} hover>
-                        <TableCell>{formatDateTime(r.timeStamp)}</TableCell>
-                        <TableCell>{r.itemName}</TableCell>
-                        <TableCell>{r.categoryName}</TableCell>
-                        <TableCell>{r.userName || "-"}</TableCell>
-                        <TableCell>{r.branchName || "-"}</TableCell>
-                        <TableCell align="right">{r.quantity}</TableCell>
-                        <TableCell align="right">
-                          <IconButton
-                            color="error"
-                            onClick={() => handleDelete(r.id)}
-                            title="Delete"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-                <Pagination
-                  page={page}
-                  count={totalPages}
-                  onChange={(_e, p) => setPage(p)}
-                  color="primary"
-                />
-              </Stack>
-            </CardContent>
-          </Card>
-        </Container>
-      </Box>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
+              <Pagination
+                page={page}
+                count={totalPages}
+                onChange={(_e, p) => setPage(p)}
+                color="primary"
+              />
+            </Stack>
+          </CardContent>
+        </Card>
+      </Container>
 
       {/* Create Outgoing Dialog */}
       <Dialog

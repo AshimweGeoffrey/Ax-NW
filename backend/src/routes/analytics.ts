@@ -9,7 +9,24 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Helper to map raw rows and aggregates to numbers
-const toNum = (v: any) => (typeof v === "bigint" ? Number(v) : v ?? 0);
+const toNum = (v: any) => (typeof v === "bigint" ? Number(v) : (v ?? 0));
+
+// Get Monday of the current week (00:00:00)
+const getStartOfCurrentWeekMonday = () => {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun,1=Mon,...
+  const diffToMonday = (day + 6) % 7; // Sun->6, Mon->0, Tue->1, ...
+  const monday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - diffToMonday,
+    0,
+    0,
+    0,
+    0
+  );
+  return monday;
+};
 
 /**
  * @swagger
@@ -24,7 +41,7 @@ router.get(
   "/dashboard",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
-    const timeRange = req.query.timeRange || "30d";
+    const timeRange = (req.query.timeRange as string) || "currentWeek";
 
     // Calculate date range
     const now = new Date();
@@ -42,6 +59,9 @@ router.get(
         break;
       case "1y":
         startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      case "currentWeek":
+        startDate = getStartOfCurrentWeekMonday();
         break;
       default:
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -72,7 +92,9 @@ router.get(
       prisma.inventory.count(),
 
       // Low stock items
-      prisma.$queryRaw<any[]>`SELECT COUNT(*) as count FROM inventory WHERE inventory_quantity < 3`,
+      prisma.$queryRaw<
+        any[]
+      >`SELECT COUNT(*) as count FROM inventory WHERE inventory_quantity < 3`,
 
       // Revenue by month
       prisma.$queryRaw<any[]>`
@@ -86,7 +108,7 @@ router.get(
       ORDER BY month ASC
     `,
 
-      // Sales by payment method
+      // Sales by payment method (respect selected range)
       prisma.saleWeekly.groupBy({
         by: ["paymentMethod"],
         where: { timeStamp: { gte: startDate } },
@@ -108,6 +130,7 @@ router.get(
       prisma.saleWeekly.findMany({
         take: 10,
         orderBy: { timeStamp: "desc" },
+        where: { timeStamp: { gte: startDate } },
         select: {
           id: true,
           itemName: true,
@@ -225,8 +248,10 @@ router.get(
   "/sales",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
-    const timeRange = req.query.timeRange || "30d";
+    const timeRange = (req.query.timeRange as string) || "currentWeek";
+    const week = (req.query.week as string) || undefined; // e.g. "current"
     const now = new Date();
+
     let startDate: Date;
     switch (timeRange) {
       case "7d":
@@ -238,15 +263,28 @@ router.get(
       case "90d":
         startDate = new Date(now.getTime() - 90 * 86400000);
         break;
+      case "currentWeek":
+        startDate = getStartOfCurrentWeekMonday();
+        break;
       default:
         startDate = new Date(now.getTime() - 30 * 86400000);
     }
 
+    if (week === "current") {
+      startDate = getStartOfCurrentWeekMonday();
+    }
+
     const [salesTrendsRaw, salesByHourRaw, salesByDayRaw, paymentBreakdownRaw] =
       await Promise.all([
-        prisma.$queryRaw<any[]>`SELECT DATE(time_stamp) as date, COUNT(*) as sales_count, SUM(price) as revenue, SUM(quantity) as items_sold FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY DATE(time_stamp) ORDER BY date ASC`,
-        prisma.$queryRaw<any[]>`SELECT HOUR(time_stamp) as hour, COUNT(*) as sales_count, SUM(price) as revenue FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY HOUR(time_stamp) ORDER BY hour ASC`,
-        prisma.$queryRaw<any[]>`SELECT DAYNAME(time_stamp) as day_name, DAYOFWEEK(time_stamp) as day_number, COUNT(*) as sales_count, SUM(price) as revenue FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY DAYOFWEEK(time_stamp), DAYNAME(time_stamp) ORDER BY day_number ASC`,
+        prisma.$queryRaw<
+          any[]
+        >`SELECT DATE(time_stamp) as date, COUNT(*) as sales_count, SUM(price) as revenue, SUM(quantity) as items_sold FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY DATE(time_stamp) ORDER BY date ASC`,
+        prisma.$queryRaw<
+          any[]
+        >`SELECT HOUR(time_stamp) as hour, COUNT(*) as sales_count, SUM(price) as revenue FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY HOUR(time_stamp) ORDER BY hour ASC`,
+        prisma.$queryRaw<
+          any[]
+        >`SELECT DAYNAME(time_stamp) as day_name, DAYOFWEEK(time_stamp) as day_number, SUM(quantity) as items_count, SUM(price) as revenue FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY DAYOFWEEK(time_stamp), DAYNAME(time_stamp) ORDER BY day_number ASC`,
         prisma.saleWeekly.groupBy({
           by: ["paymentMethod"],
           where: { timeStamp: { gte: startDate } },
@@ -255,27 +293,52 @@ router.get(
         }),
       ]);
 
-    const salesTrends = (salesTrendsRaw || []).map((r) => ({
+    const salesTrends = (salesTrendsRaw || []).map((r: any) => ({
       date: r.date,
       sales_count: toNum((r as any).sales_count),
       revenue: toNum((r as any).revenue),
       items_sold: toNum((r as any).items_sold),
     }));
 
-    const salesByHour = (salesByHourRaw || []).map((r) => ({
+    const salesByHour = (salesByHourRaw || []).map((r: any) => ({
       hour: toNum((r as any).hour),
       sales_count: toNum((r as any).sales_count),
       revenue: toNum((r as any).revenue),
     }));
 
-    const salesByDay = (salesByDayRaw || []).map((r) => ({
-      day_name: r.day_name,
-      day_number: toNum((r as any).day_number),
-      sales_count: toNum((r as any).sales_count),
+    const rawByDay = (salesByDayRaw || []).map((r: any) => ({
+      day_name: r.day_name as string,
+      day_number: toNum((r as any).day_number) as number,
+      items_count: toNum((r as any).items_count),
       revenue: toNum((r as any).revenue),
     }));
 
-    const paymentBreakdown = (paymentBreakdownRaw || []).map((r) => ({
+    // Normalize to Monday-Sunday for current week with zero fill
+    const mondayFirst = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ];
+
+    let salesByDay = rawByDay as any[];
+    if (timeRange === "currentWeek" || week === "current") {
+      const map = new Map<string, { items_count: number; revenue: number }>();
+      rawByDay.forEach((d: any) =>
+        map.set(d.day_name, { items_count: d.items_count, revenue: d.revenue })
+      );
+      salesByDay = mondayFirst.map((name) => ({
+        day_name: name,
+        day_number: 0,
+        items_count: map.get(name)?.items_count || 0,
+        revenue: map.get(name)?.revenue || 0,
+      }));
+    }
+
+    const paymentBreakdown = (paymentBreakdownRaw || []).map((r: any) => ({
       paymentMethod: r.paymentMethod || "Unknown",
       _sum: { price: toNum(r._sum?.price) },
       _count: toNum(r._count),
