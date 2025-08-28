@@ -1,12 +1,15 @@
 import express from "express";
 import { prisma } from "../utils/database";
 import { asyncHandler } from "../middleware/errorHandler";
-import { authenticateToken, requireStaff } from "../middleware/auth";
+import { authenticateToken, requireAdmin } from "../middleware/auth";
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticateToken);
+
+// Helper to map raw rows and aggregates to numbers
+const toNum = (v: any) => (typeof v === "bigint" ? Number(v) : v ?? 0);
 
 /**
  * @swagger
@@ -19,7 +22,7 @@ router.use(authenticateToken);
  */
 router.get(
   "/dashboard",
-  requireStaff,
+  requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const timeRange = req.query.timeRange || "30d";
 
@@ -45,13 +48,13 @@ router.get(
     }
 
     const [
-      totalRevenue,
+      totalRevenueAgg,
       totalSales,
       totalItems,
-      lowStockItems,
-      revenueByMonth,
-      salesByPaymentMethod,
-      topCategories,
+      lowStockItemsRaw,
+      revenueByMonthRaw,
+      salesByPaymentMethodRaw,
+      topCategoriesRaw,
       recentSales,
     ] = await Promise.all([
       // Total revenue
@@ -69,14 +72,10 @@ router.get(
       prisma.inventory.count(),
 
       // Low stock items
-      prisma.$queryRaw`
-      SELECT COUNT(*) as count 
-      FROM inventory 
-      WHERE inventory_quantity <= min_stock_level
-    `,
+      prisma.$queryRaw<any[]>`SELECT COUNT(*) as count FROM inventory WHERE inventory_quantity < 3`,
 
       // Revenue by month
-      prisma.$queryRaw`
+      prisma.$queryRaw<any[]>`
       SELECT 
         DATE_FORMAT(time_stamp, '%Y-%m') as month,
         SUM(price) as revenue,
@@ -109,30 +108,56 @@ router.get(
       prisma.saleWeekly.findMany({
         take: 10,
         orderBy: { timeStamp: "desc" },
-        include: {
-          user: { select: { name: true } },
-          item: { select: { name: true } },
+        select: {
+          id: true,
+          itemName: true,
+          quantity: true,
+          price: true,
+          timeStamp: true,
+          userName: true,
         },
       }),
     ]);
+
+    const totalRevenue = toNum(totalRevenueAgg._sum.price || 0);
+    const lowStockItems = toNum(lowStockItemsRaw?.[0]?.count || 0);
+
+    const revenueByMonth = (revenueByMonthRaw || []).map((r) => ({
+      month: r.month,
+      revenue: toNum((r as any).revenue),
+      sales_count: toNum((r as any).sales_count),
+    }));
+
+    const salesByPaymentMethod = (salesByPaymentMethodRaw || []).map((r) => ({
+      paymentMethod: r.paymentMethod || "Unknown",
+      _sum: { price: toNum(r._sum?.price) },
+      _count: toNum(r._count),
+    }));
+
+    const topCategories = (topCategoriesRaw || []).map((r) => ({
+      category: r.category || "Unknown",
+      _sum: {
+        quantity: toNum(r._sum?.quantity),
+        price: toNum(r._sum?.price),
+      },
+      _count: toNum(r._count),
+    }));
 
     res.json({
       success: true,
       data: {
         metrics: {
-          totalRevenue: totalRevenue._sum.price || 0,
+          totalRevenue,
           totalSales,
           totalItems,
-          lowStockItems: (lowStockItems as any)[0]?.count || 0,
+          lowStockItems,
         },
         charts: {
           revenueByMonth,
           salesByPaymentMethod,
           topCategories,
         },
-        recentActivity: {
-          recentSales,
-        },
+        recentActivity: { recentSales },
         timeRange,
       },
     });
@@ -150,24 +175,15 @@ router.get(
  */
 router.get(
   "/inventory",
-  requireStaff,
+  requireAdmin,
   asyncHandler(async (req: any, res: any) => {
-    const [
-      stockLevels,
-      categoryDistribution,
-      stockMovements,
-      topMovingItems,
-      stockValue,
-    ] = await Promise.all([
+    const [stockLevelsRaw, categoryDistributionRaw] = await Promise.all([
       // Stock levels overview
-      prisma.$queryRaw`
-      SELECT 
+      prisma.$queryRaw<any[]>`SELECT 
         COUNT(CASE WHEN inventory_quantity = 0 THEN 1 END) as out_of_stock,
-        COUNT(CASE WHEN inventory_quantity <= min_stock_level AND inventory_quantity > 0 THEN 1 END) as low_stock,
-        COUNT(CASE WHEN inventory_quantity > min_stock_level AND inventory_quantity < max_stock_level THEN 1 END) as normal_stock,
-        COUNT(CASE WHEN inventory_quantity >= max_stock_level THEN 1 END) as overstock
-      FROM inventory
-    `,
+        COUNT(CASE WHEN inventory_quantity < 3 AND inventory_quantity > 0 THEN 1 END) as low_stock,
+        COUNT(CASE WHEN inventory_quantity >= 3 THEN 1 END) as normal_stock
+      FROM inventory`,
 
       // Inventory by category
       prisma.inventory.groupBy({
@@ -175,44 +191,23 @@ router.get(
         _count: true,
         _sum: { inventoryQuantity: true },
       }),
-
-      // Recent stock movements
-      prisma.stockMovement.findMany({
-        take: 20,
-        orderBy: { movementDate: "desc" },
-        include: {
-          item: { select: { name: true } },
-          user: { select: { name: true } },
-        },
-      }),
-
-      // Top moving items (most stock movements)
-      prisma.stockMovement.groupBy({
-        by: ["itemId"],
-        _count: true,
-        _sum: { quantity: true },
-        orderBy: { _count: { itemId: "desc" } },
-        take: 10,
-      }),
-
-      // Total inventory value
-      prisma.$queryRaw`
-      SELECT 
-        SUM(inventory_quantity * unit_cost) as total_cost_value,
-        SUM(inventory_quantity * selling_price) as total_selling_value
-      FROM inventory
-    `,
     ]);
+
+    const stockLevels = {
+      out_of_stock: toNum(stockLevelsRaw?.[0]?.out_of_stock),
+      low_stock: toNum(stockLevelsRaw?.[0]?.low_stock),
+      normal_stock: toNum(stockLevelsRaw?.[0]?.normal_stock),
+    };
+
+    const categoryDistribution = (categoryDistributionRaw || []).map((r) => ({
+      categoryName: r.categoryName,
+      _count: toNum(r._count),
+      _sum: { inventoryQuantity: toNum(r._sum?.inventoryQuantity) },
+    }));
 
     res.json({
       success: true,
-      data: {
-        stockLevels: (stockLevels as any)[0],
-        categoryDistribution,
-        stockMovements,
-        topMovingItems,
-        stockValue: (stockValue as any)[0],
-      },
+      data: { stockLevels, categoryDistribution },
     });
   })
 );
@@ -228,192 +223,72 @@ router.get(
  */
 router.get(
   "/sales",
-  requireStaff,
+  requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const timeRange = req.query.timeRange || "30d";
-
-    // Calculate date range
     const now = new Date();
     let startDate: Date;
-
     switch (timeRange) {
       case "7d":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 7 * 86400000);
         break;
       case "30d":
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 30 * 86400000);
         break;
       case "90d":
-        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 90 * 86400000);
         break;
       default:
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startDate = new Date(now.getTime() - 30 * 86400000);
     }
 
-    const [
-      salesTrends,
-      topProducts,
-      salesByHour,
-      salesByDay,
-      customerAnalysis,
-      profitAnalysis,
-    ] = await Promise.all([
-      // Sales trends
-      prisma.$queryRaw`
-      SELECT 
-        DATE(time_stamp) as date,
-        COUNT(*) as sales_count,
-        SUM(price) as revenue,
-        SUM(quantity) as items_sold
-      FROM sale_weekly 
-      WHERE time_stamp >= ${startDate}
-      GROUP BY DATE(time_stamp)
-      ORDER BY date ASC
-    `,
+    const [salesTrendsRaw, salesByHourRaw, salesByDayRaw, paymentBreakdownRaw] =
+      await Promise.all([
+        prisma.$queryRaw<any[]>`SELECT DATE(time_stamp) as date, COUNT(*) as sales_count, SUM(price) as revenue, SUM(quantity) as items_sold FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY DATE(time_stamp) ORDER BY date ASC`,
+        prisma.$queryRaw<any[]>`SELECT HOUR(time_stamp) as hour, COUNT(*) as sales_count, SUM(price) as revenue FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY HOUR(time_stamp) ORDER BY hour ASC`,
+        prisma.$queryRaw<any[]>`SELECT DAYNAME(time_stamp) as day_name, DAYOFWEEK(time_stamp) as day_number, COUNT(*) as sales_count, SUM(price) as revenue FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY DAYOFWEEK(time_stamp), DAYNAME(time_stamp) ORDER BY day_number ASC`,
+        prisma.saleWeekly.groupBy({
+          by: ["paymentMethod"],
+          where: { timeStamp: { gte: startDate } },
+          _sum: { price: true },
+          _count: true,
+        }),
+      ]);
 
-      // Top selling products
-      prisma.saleWeekly.groupBy({
-        by: ["itemName"],
-        where: { timeStamp: { gte: startDate } },
-        _sum: { quantity: true, price: true },
-        _count: true,
-        orderBy: { _sum: { quantity: "desc" } },
-        take: 10,
-      }),
+    const salesTrends = (salesTrendsRaw || []).map((r) => ({
+      date: r.date,
+      sales_count: toNum((r as any).sales_count),
+      revenue: toNum((r as any).revenue),
+      items_sold: toNum((r as any).items_sold),
+    }));
 
-      // Sales by hour of day
-      prisma.$queryRaw`
-      SELECT 
-        HOUR(time_stamp) as hour,
-        COUNT(*) as sales_count,
-        SUM(price) as revenue
-      FROM sale_weekly 
-      WHERE time_stamp >= ${startDate}
-      GROUP BY HOUR(time_stamp)
-      ORDER BY hour ASC
-    `,
+    const salesByHour = (salesByHourRaw || []).map((r) => ({
+      hour: toNum((r as any).hour),
+      sales_count: toNum((r as any).sales_count),
+      revenue: toNum((r as any).revenue),
+    }));
 
-      // Sales by day of week
-      prisma.$queryRaw`
-      SELECT 
-        DAYNAME(time_stamp) as day_name,
-        DAYOFWEEK(time_stamp) as day_number,
-        COUNT(*) as sales_count,
-        SUM(price) as revenue
-      FROM sale_weekly 
-      WHERE time_stamp >= ${startDate}
-      GROUP BY DAYOFWEEK(time_stamp), DAYNAME(time_stamp)
-      ORDER BY day_number ASC
-    `,
+    const salesByDay = (salesByDayRaw || []).map((r) => ({
+      day_name: r.day_name,
+      day_number: toNum((r as any).day_number),
+      sales_count: toNum((r as any).sales_count),
+      revenue: toNum((r as any).revenue),
+    }));
 
-      // Customer analysis
-      prisma.saleWeekly.groupBy({
-        by: ["customerName"],
-        where: {
-          timeStamp: { gte: startDate },
-          customerName: { not: null },
-        },
-        _sum: { price: true, quantity: true },
-        _count: true,
-        orderBy: { _sum: { price: "desc" } },
-        take: 10,
-      }),
-
-      // Profit analysis
-      prisma.$queryRaw`
-      SELECT 
-        s.category,
-        SUM(s.quantity) as total_quantity,
-        SUM(s.price) as total_revenue,
-        SUM(s.quantity * i.unit_cost) as total_cost,
-        SUM(s.price) - SUM(s.quantity * i.unit_cost) as profit
-      FROM sale_weekly s
-      JOIN inventory i ON s.item_name = i.name
-      WHERE s.time_stamp >= ${startDate}
-      GROUP BY s.category
-      ORDER BY profit DESC
-    `,
-    ]);
+    const paymentBreakdown = (paymentBreakdownRaw || []).map((r) => ({
+      paymentMethod: r.paymentMethod || "Unknown",
+      _sum: { price: toNum(r._sum?.price) },
+      _count: toNum(r._count),
+    }));
 
     res.json({
       success: true,
       data: {
         salesTrends,
-        topProducts,
         salesByHour,
         salesByDay,
-        customerAnalysis,
-        profitAnalysis,
+        paymentBreakdown,
         timeRange,
-      },
-    });
-  })
-);
-
-/**
- * @swagger
- * /analytics/forecast:
- *   get:
- *     summary: Get demand forecast data
- *     tags: [Analytics]
- *     security:
- *       - bearerAuth: []
- */
-router.get(
-  "/forecast",
-  requireStaff,
-  asyncHandler(async (req: any, res: any) => {
-    // Simple moving average forecast for the next 30 days
-    const historicalData = await prisma.$queryRaw`
-    SELECT 
-      DATE(time_stamp) as date,
-      SUM(quantity) as total_quantity,
-      SUM(price) as total_revenue
-    FROM sale_weekly 
-    WHERE time_stamp >= DATE_SUB(NOW(), INTERVAL 90 DAY)
-    GROUP BY DATE(time_stamp)
-    ORDER BY date ASC
-  `;
-
-    // Calculate moving averages and trends
-    const forecast = [];
-    const data = historicalData as any[];
-
-    if (data.length >= 7) {
-      // Simple 7-day moving average for forecast
-      const lastWeekAvg =
-        data
-          .slice(-7)
-          .reduce((sum, day) => sum + Number(day.total_quantity), 0) / 7;
-      const revenueAvg =
-        data
-          .slice(-7)
-          .reduce((sum, day) => sum + Number(day.total_revenue), 0) / 7;
-
-      // Generate forecast for next 30 days
-      for (let i = 1; i <= 30; i++) {
-        const forecastDate = new Date();
-        forecastDate.setDate(forecastDate.getDate() + i);
-
-        forecast.push({
-          date: forecastDate.toISOString().split("T")[0],
-          predicted_quantity: Math.round(lastWeekAvg),
-          predicted_revenue: Math.round(revenueAvg),
-          confidence: Math.max(0.5, 1 - i / 60), // Decreasing confidence over time
-        });
-      }
-    }
-
-    res.json({
-      success: true,
-      data: {
-        historicalData,
-        forecast,
-        metadata: {
-          forecastMethod: "Simple Moving Average (7-day)",
-          forecastPeriod: "30 days",
-          dataPoints: data.length,
-        },
       },
     });
   })

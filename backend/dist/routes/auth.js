@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const crypto_1 = require("crypto");
 const zod_1 = require("zod");
 const database_1 = require("../utils/database");
 const errorHandler_1 = require("../middleware/errorHandler");
@@ -28,13 +29,24 @@ const changePasswordSchema = zod_1.z.object({
     newPassword: zod_1.z.string().min(6).max(50),
 });
 const generateTokens = (user) => {
-    const accessToken = jsonwebtoken_1.default.sign({
+    const jwtSecret = process.env.JWT_SECRET;
+    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET;
+    if (!jwtSecret || !jwtRefreshSecret) {
+        throw new Error("JWT secrets not configured");
+    }
+    const accessPayload = {
         userId: user.id,
         name: user.name,
         email: user.email,
         role: user.accessControl,
-    }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || "24h" });
-    const refreshToken = jsonwebtoken_1.default.sign({ userId: user.id }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d" });
+    };
+    const accessToken = jsonwebtoken_1.default.sign(accessPayload, jwtSecret, {
+        expiresIn: process.env.JWT_EXPIRES_IN || "24h",
+    });
+    const refreshPayload = { userId: user.id };
+    const refreshToken = jsonwebtoken_1.default.sign(refreshPayload, jwtRefreshSecret, {
+        expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+    });
     return { accessToken, refreshToken };
 };
 router.post("/login", (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -49,13 +61,6 @@ router.post("/login", (0, errorHandler_1.asyncHandler)(async (req, res) => {
     if (!isPasswordValid) {
         throw (0, errorHandler_1.createError)("Invalid credentials", 401);
     }
-    if (!user.isActive) {
-        throw (0, errorHandler_1.createError)("Account is deactivated", 401);
-    }
-    await database_1.prisma.user.update({
-        where: { id: user.id },
-        data: { lastLogin: new Date() },
-    });
     const { accessToken, refreshToken } = generateTokens(user);
     res.json({
         success: true,
@@ -65,7 +70,6 @@ router.post("/login", (0, errorHandler_1.asyncHandler)(async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.accessControl,
-                lastLogin: user.lastLogin,
             },
             accessToken,
             refreshToken,
@@ -74,7 +78,7 @@ router.post("/login", (0, errorHandler_1.asyncHandler)(async (req, res) => {
 }));
 router.post("/register", auth_1.authenticateToken, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     if (req.user?.role !== "Administrator") {
-        throw (0, errorHandler_1.createError)("Only administrators can register new users", 403);
+        throw (0, errorHandler_1.createError)("Access denied", 403);
     }
     const { name, email, password, accessControl } = registerSchema.parse(req.body);
     const existingUser = await database_1.prisma.user.findFirst({
@@ -83,62 +87,67 @@ router.post("/register", auth_1.authenticateToken, (0, errorHandler_1.asyncHandl
         },
     });
     if (existingUser) {
-        throw (0, errorHandler_1.createError)("User with this username or email already exists", 400);
+        throw (0, errorHandler_1.createError)("User already exists", 400);
     }
-    const hashedPassword = await bcryptjs_1.default.hash(password, 12);
-    const newUser = await database_1.prisma.user.create({
+    const hashedPassword = await bcryptjs_1.default.hash(password, 10);
+    const user = await database_1.prisma.user.create({
         data: {
             name,
             email,
             password: hashedPassword,
             accessControl: accessControl || "Staff",
+            id: (0, crypto_1.randomUUID)(),
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            accessControl: true,
         },
     });
     res.status(201).json({
         success: true,
         data: {
             user: {
-                id: newUser.id,
-                name: newUser.name,
-                email: newUser.email,
-                role: newUser.accessControl,
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                accessControl: user.accessControl,
             },
         },
     });
 }));
 router.get("/me", auth_1.authenticateToken, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const user = await database_1.prisma.user.findUnique({
-        where: { id: req.user.id },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            accessControl: true,
-            isActive: true,
-            lastLogin: true,
-            createdAt: true,
-        },
+        where: { name: req.user.name },
     });
     res.json({
         success: true,
-        data: { user },
+        data: {
+            user: user && {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                accessControl: user.accessControl,
+            },
+        },
     });
 }));
-router.put("/change-password", auth_1.authenticateToken, (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.post("/change-password", auth_1.authenticateToken, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
     const user = await database_1.prisma.user.findUnique({
-        where: { id: req.user.id },
+        where: { name: req.user.name },
     });
     if (!user || !user.password) {
         throw (0, errorHandler_1.createError)("User not found", 404);
     }
     const isCurrentPasswordValid = await bcryptjs_1.default.compare(currentPassword, user.password);
     if (!isCurrentPasswordValid) {
-        throw (0, errorHandler_1.createError)("Current password is incorrect", 400);
+        throw (0, errorHandler_1.createError)("Invalid current password", 400);
     }
-    const hashedNewPassword = await bcryptjs_1.default.hash(newPassword, 12);
+    const hashedNewPassword = await bcryptjs_1.default.hash(newPassword, 10);
     await database_1.prisma.user.update({
-        where: { id: user.id },
+        where: { name: user.name },
         data: { password: hashedNewPassword },
     });
     res.json({
@@ -146,18 +155,22 @@ router.put("/change-password", auth_1.authenticateToken, (0, errorHandler_1.asyn
         message: "Password changed successfully",
     });
 }));
-router.post("/refresh", (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.post("/refresh-token", (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
-        throw (0, errorHandler_1.createError)("Refresh token required", 401);
+        throw (0, errorHandler_1.createError)("Refresh token is required", 400);
     }
     try {
-        const decoded = jsonwebtoken_1.default.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-        const user = await database_1.prisma.user.findUnique({
+        const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET;
+        if (!jwtRefreshSecret) {
+            throw (0, errorHandler_1.createError)("JWT refresh secret not configured", 500);
+        }
+        const decoded = jsonwebtoken_1.default.verify(refreshToken, jwtRefreshSecret);
+        const user = await database_1.prisma.user.findFirst({
             where: { id: decoded.userId },
         });
-        if (!user || !user.isActive) {
-            throw (0, errorHandler_1.createError)("User not found or inactive", 401);
+        if (!user) {
+            throw (0, errorHandler_1.createError)("User not found", 401);
         }
         const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
         res.json({

@@ -2,126 +2,45 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: string;
-  isActive: boolean;
-  lastLogin?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  role: UserRole;
 }
+
+export type UserRole = "Administrator" | "Sale_Manager" | "Staff" | "Auditor";
 
 export interface Category {
   id: string;
   name: string;
-  description?: string;
-  percentage?: string;
-  profitPercentage: number;
-  colorCode: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  percentage?: string; // varchar(12) in DB
 }
 
 export interface Branch {
   id: string;
-  name: string;
-  address?: string;
-  phone?: string;
-  managerId?: string;
-  manager?: User;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  branch_name: string;
 }
 
 export interface InventoryItem {
   id: string;
   name: string;
-  sku?: string;
   categoryName: string;
-  category?: Category;
   inventoryQuantity: number;
   incomingTimeStamp?: Date;
-  minStockLevel: number;
-  maxStockLevel: number;
-  unitCost: number;
-  sellingPrice: number;
-  supplier?: string;
-  location?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy?: string;
-  creator?: User;
 }
 
 export interface Sale {
   id: string;
-  invoiceNumber?: string;
-  itemName?: string;
+  itemName: string;
   category?: string;
   quantity: number;
   price: number;
-  userName?: string;
-  user?: User;
-  item?: InventoryItem;
-  categoryRel?: Category;
+  userName?: string | null;
   timeStamp?: Date;
-  paymentMethod?: string;
-  payment?: PaymentMethod;
-  discountAmount: number;
-  taxAmount: number;
-  customerName?: string;
-  customerPhone?: string;
-  branchId?: string;
-  branch?: Branch;
+  paymentMethod: string;
 }
 
 export interface PaymentMethod {
   paymentId?: string;
   name: string;
   totalWeekly: number;
-}
-
-export interface StockMovement {
-  id: string;
-  itemId: string;
-  item?: InventoryItem;
-  movementType: "in" | "out" | "transfer" | "adjustment";
-  quantity: number;
-  fromBranchId?: string;
-  toBranchId?: string;
-  fromBranch?: Branch;
-  toBranch?: Branch;
-  referenceId?: string;
-  referenceType?: "sale" | "purchase" | "transfer" | "adjustment";
-  notes?: string;
-  userId: string;
-  user?: User;
-  movementDate: Date;
-}
-
-export interface SystemLog {
-  id: string;
-  userId?: string;
-  user?: User;
-  action: string;
-  tableName?: string;
-  recordId?: string;
-  oldValues?: string;
-  newValues?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  createdAt: Date;
-}
-
-export interface Settings {
-  id: string;
-  keyName: string;
-  value?: string;
-  description?: string;
-  category: string;
-  updatedBy?: string;
-  updater?: User;
-  updatedAt: Date;
 }
 
 export interface ApiResponse<T> {
@@ -135,8 +54,8 @@ export interface ApiResponse<T> {
 }
 
 export interface PaginationParams {
-  page: number;
-  limit: number;
+  page?: number;
+  limit?: number;
   search?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
@@ -157,12 +76,6 @@ export interface DashboardMetrics {
   totalSales: number;
   totalItems: number;
   lowStockItems: number;
-}
-
-export interface ChartData {
-  revenueByMonth: MonthlyRevenueData[];
-  salesByPaymentMethod: PaymentMethodData[];
-  topCategories: CategorySalesData[];
 }
 
 export interface MonthlyRevenueData {
@@ -210,15 +123,8 @@ export interface ChangePasswordData {
 
 export interface CreateInventoryData {
   name: string;
-  sku?: string;
   categoryName: string;
   inventoryQuantity?: number;
-  unitCost?: number;
-  sellingPrice?: number;
-  minStockLevel?: number;
-  maxStockLevel?: number;
-  supplier?: string;
-  location?: string;
 }
 
 export interface CreateSaleData {
@@ -226,30 +132,6 @@ export interface CreateSaleData {
   quantity: number;
   price: number;
   paymentMethod: string;
-  customerName?: string;
-  customerPhone?: string;
-  discountAmount?: number;
-  taxAmount?: number;
-  branchId?: string;
 }
 
-export interface FilterOptions {
-  categories: Category[];
-  branches: Branch[];
-  users: User[];
-  paymentMethods: PaymentMethod[];
-}
-
-export interface ReportFilters {
-  startDate?: Date;
-  endDate?: Date;
-  categories?: string[];
-  branches?: string[];
-  users?: string[];
-  paymentMethods?: string[];
-}
-
-export type UserRole = "Administrator" | "Sale_Manager" | "Staff" | "Auditor";
-export type MovementType = "in" | "out" | "transfer" | "adjustment";
-export type ReferenceType = "sale" | "purchase" | "transfer" | "adjustment";
 export type TimeRange = "7d" | "30d" | "90d" | "1y";

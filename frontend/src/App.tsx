@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -12,11 +12,10 @@ import { Toaster } from "react-hot-toast";
 // Import components (to be created)
 import Login from "./pages/auth/Login";
 import Dashboard from "./pages/Dashboard";
-// import InventoryPage from "./pages/inventory/InventoryPage";
-// import SalesPage from "./pages/sales/SalesPage";
-// import AnalyticsPage from "./pages/analytics/AnalyticsPage";
-// import UsersPage from "./pages/admin/UsersPage";
-// import SettingsPage from "./pages/settings/SettingsPage";
+import SalesPage from "./pages/sales/SalesPage";
+import InventoryPage from "./pages/inventory/InventoryPage";
+import OutgoingPage from "./pages/outgoing/OutgoingPage";
+import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 
 // Import hooks and stores
 import { useAuthStore } from "./store/authStore";
@@ -26,9 +25,7 @@ const theme = createTheme({
   palette: {
     mode: "light",
     primary: {
-      main: "#1976d2",
-      light: "#42a5f5",
-      dark: "#1565c0",
+      main: "#40c793",
     },
     secondary: {
       main: "#dc004e",
@@ -75,11 +72,29 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return !isAuthenticated ? <>{children}</> : <Navigate to="/" replace />;
 };
 
+// Admin Route Component
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuthStore();
+  return user?.role === "Administrator" ? (
+    <>{children}</>
+  ) : (
+    <Navigate to="/" replace />
+  );
+};
+
 function App() {
+  const { isAuthenticated, user, getCurrentUser } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated && !user) {
+      getCurrentUser().catch(() => {});
+    }
+  }, [isAuthenticated, user, getCurrentUser]);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Box sx={{ display: "flex", minHeight: "100vh" }}>
           <Routes>
             {/* Public Routes */}
@@ -101,16 +116,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* TODO: Add these routes when components are created */}
-            {/*
-            <Route
-              path="/inventory"
-              element={
-                <ProtectedRoute>
-                  <InventoryPage />
-                </ProtectedRoute>
-              }
-            />
             <Route
               path="/sales"
               element={
@@ -120,30 +125,31 @@ function App() {
               }
             />
             <Route
+              path="/inventory"
+              element={
+                <ProtectedRoute>
+                  <InventoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/outgoing"
+              element={
+                <ProtectedRoute>
+                  <OutgoingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/analytics"
               element={
                 <ProtectedRoute>
-                  <AnalyticsPage />
+                  <AdminRoute>
+                    <AnalyticsPage />
+                  </AdminRoute>
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/users"
-              element={
-                <ProtectedRoute>
-                  <UsersPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <SettingsPage />
-                </ProtectedRoute>
-              }
-            />
-            */}
 
             {/* Fallback route */}
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -163,7 +169,7 @@ function App() {
           success: {
             duration: 3000,
             iconTheme: {
-              primary: "#4caf50",
+              primary: "#40c793",
               secondary: "#fff",
             },
           },

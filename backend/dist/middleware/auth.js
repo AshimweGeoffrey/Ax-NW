@@ -16,23 +16,16 @@ const authenticateToken = async (req, res, next) => {
         }
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
         const user = await database_1.prisma.user.findUnique({
-            where: { id: decoded.userId },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                accessControl: true,
-                isActive: true,
-            },
+            where: { name: decoded.name },
         });
-        if (!user || !user.isActive) {
-            throw (0, errorHandler_1.createError)("User not found or inactive", 401);
+        if (!user) {
+            throw (0, errorHandler_1.createError)("User not found", 401);
         }
         req.user = {
             id: user.id,
             name: user.name,
             email: user.email,
-            role: user.accessControl || "staff",
+            role: user.accessControl || "Staff",
         };
         next();
     }
@@ -47,13 +40,11 @@ const authenticateToken = async (req, res, next) => {
 };
 exports.authenticateToken = authenticateToken;
 const requireRole = (allowedRoles) => {
-    return (req, res, next) => {
-        if (!req.user) {
+    return (req, _res, next) => {
+        if (!req.user)
             return next((0, errorHandler_1.createError)("Authentication required", 401));
-        }
-        if (!allowedRoles.includes(req.user.role)) {
+        if (!allowedRoles.includes(req.user.role))
             return next((0, errorHandler_1.createError)("Insufficient permissions", 403));
-        }
         next();
     };
 };

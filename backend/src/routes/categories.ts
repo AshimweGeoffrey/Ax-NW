@@ -46,7 +46,7 @@ router.get(
         _count: {
           select: {
             inventory: true,
-            salesWeekly: true,
+            outgoingStock: true, // salesWeekly is not a relation on Category
           },
         },
       },
@@ -64,7 +64,7 @@ router.get(
  * @swagger
  * /categories/{id}:
  *   get:
- *     summary: Get category by ID
+ *     summary: Get category by ID or name
  *     tags: [Categories]
  *     security:
  *       - bearerAuth: []
@@ -72,40 +72,43 @@ router.get(
 router.get(
   "/:id",
   asyncHandler(async (req: any, res: any) => {
-    const category = await prisma.category.findUnique({
-      where: { id: req.params.id },
+    const cat = await prisma.category.findFirst({
+      where: { OR: [{ id: req.params.id }, { name: req.params.id }] },
       include: {
         inventory: {
           orderBy: { name: "asc" },
         },
-        salesWeekly: {
-          take: 10,
-          orderBy: { timeStamp: "desc" },
-          select: {
-            id: true,
-            itemName: true,
-            quantity: true,
-            price: true,
-            timeStamp: true,
-            userName: true,
-          },
-        },
         _count: {
           select: {
             inventory: true,
-            salesWeekly: true,
+            outgoingStock: true,
           },
         },
       },
     });
 
-    if (!category) {
+    if (!cat) {
       throw createError("Category not found", 404);
     }
 
+    // Recent sales for this category (no direct relation in Prisma model)
+    const recentSales = await prisma.saleWeekly.findMany({
+      where: { category: cat.name },
+      take: 10,
+      orderBy: { timeStamp: "desc" },
+      select: {
+        id: true,
+        itemName: true,
+        quantity: true,
+        price: true,
+        timeStamp: true,
+        userName: true,
+      },
+    });
+
     res.json({
       success: true,
-      data: { category },
+      data: { category: { ...cat, recentSales } },
     });
   })
 );
@@ -160,8 +163,8 @@ router.put(
   asyncHandler(async (req: any, res: any) => {
     const validatedData = updateCategorySchema.parse(req.body);
 
-    const existingCategory = await prisma.category.findUnique({
-      where: { id: req.params.id },
+    const existingCategory = await prisma.category.findFirst({
+      where: { OR: [{ id: req.params.id }, { name: req.params.id }] },
     });
 
     if (!existingCategory) {
@@ -169,18 +172,18 @@ router.put(
     }
 
     // Check for duplicate name if being updated
-    if (validatedData.name) {
+    if (validatedData.name && validatedData.name !== existingCategory.name) {
       const duplicateCategory = await prisma.category.findUnique({
         where: { name: validatedData.name },
       });
 
-      if (duplicateCategory && duplicateCategory.id !== req.params.id) {
+      if (duplicateCategory) {
         throw createError("Category with this name already exists", 400);
       }
     }
 
     const category = await prisma.category.update({
-      where: { id: req.params.id },
+      where: { name: existingCategory.name },
       data: validatedData,
     });
 
@@ -204,17 +207,17 @@ router.delete(
   "/:id",
   requireManager,
   asyncHandler(async (req: any, res: any) => {
-    const category = await prisma.category.findUnique({
-      where: { id: req.params.id },
+    const cat = await prisma.category.findFirst({
+      where: { OR: [{ id: req.params.id }, { name: req.params.id }] },
     });
 
-    if (!category) {
+    if (!cat) {
       throw createError("Category not found", 404);
     }
 
     // Check if category has any inventory items
     const inventoryCount = await prisma.inventory.count({
-      where: { categoryName: category.name },
+      where: { categoryName: cat.name },
     });
 
     if (inventoryCount > 0) {
@@ -225,7 +228,7 @@ router.delete(
     }
 
     await prisma.category.delete({
-      where: { id: req.params.id },
+      where: { name: cat.name },
     });
 
     res.json({
@@ -247,8 +250,8 @@ router.delete(
 router.get(
   "/:id/performance",
   asyncHandler(async (req: any, res: any) => {
-    const category = await prisma.category.findUnique({
-      where: { id: req.params.id },
+    const category = await prisma.category.findFirst({
+      where: { OR: [{ id: req.params.id }, { name: req.params.id }] },
     });
 
     if (!category) {

@@ -16,6 +16,7 @@ import analyticsRoutes from "./routes/analytics";
 import userRoutes from "./routes/users";
 import branchRoutes from "./routes/branches";
 import categoryRoutes from "./routes/categories";
+import outgoingRoutes from "./routes/outgoing";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
@@ -55,7 +56,10 @@ app.use(compression());
 app.use(morgan("combined"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(limiter);
+// Enable rate limiter only in production to avoid 429s during local dev
+if (process.env.NODE_ENV === "production") {
+  app.use(limiter);
+}
 app.use(requestLogger);
 
 // Health check endpoint
@@ -77,6 +81,7 @@ app.use(`/api/${API_VERSION}/analytics`, analyticsRoutes);
 app.use(`/api/${API_VERSION}/users`, userRoutes);
 app.use(`/api/${API_VERSION}/branches`, branchRoutes);
 app.use(`/api/${API_VERSION}/categories`, categoryRoutes);
+app.use(`/api/${API_VERSION}/outgoing`, outgoingRoutes);
 
 // Swagger Documentation
 if (process.env.NODE_ENV !== "production") {
