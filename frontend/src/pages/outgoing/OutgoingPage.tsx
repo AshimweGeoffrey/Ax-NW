@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Typography,
   Toolbar,
   Container,
+  Stack,
+  Typography,
   Card,
   CardContent,
-  Stack,
+  Button,
   TextField,
   InputAdornment,
-  Button,
   Table,
   TableHead,
   TableRow,
@@ -153,22 +153,41 @@ const OutgoingPage: React.FC = () => {
           justifyContent="space-between"
           sx={{ mb: 3 }}
         >
-          <Typography variant="h4">Outgoing</Typography>
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setOpenCreate(true)}
-            >
-              Record Outgoing
-            </Button>
-            <Button variant="outlined" onClick={() => navigate("/sales")}>
-              Go to Sales
-            </Button>
-          </Stack>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Outgoing
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => setOpenCreate(true)}
+            sx={{
+              fontWeight: 700,
+              borderRadius: 999,
+              px: 2.5,
+              background: "linear-gradient(135deg,#ffb74d,#fb8c00)",
+              boxShadow: "0 4px 14px rgba(251,140,0,0.35)",
+              "&:hover": {
+                background: "linear-gradient(135deg,#ffa726,#f57c00)",
+                boxShadow: "0 6px 18px rgba(251,140,0,0.5)",
+              },
+            }}
+          >
+            Record Outgoing
+          </Button>
         </Stack>
 
-        <Card sx={{ mb: 3 }}>
+        <Card
+          sx={{
+            mb: 3,
+            overflow: "hidden",
+            border: "1px solid rgba(251,140,0,0.15)",
+          }}
+        >
+          <Box
+            sx={{
+              height: 4,
+              background: "linear-gradient(90deg,#ffb74d,#fb8c00)",
+            }}
+          />
           <CardContent>
             <Stack
               direction={{ xs: "column", md: "row" }}

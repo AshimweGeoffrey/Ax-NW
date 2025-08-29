@@ -56,10 +56,13 @@ model Inventory {
   categoryName      String    @map("category_name") @db.VarChar(32)
   inventoryQuantity Int       @default(0) @map("inventory_quantity")
   incomingTimeStamp DateTime? @map("incoming_time_stamp")
+  // Track last positive addition
+  recentEntry       Int       @default(0) @map("recent_entry")
+  recentEntryAt     DateTime? @map("recent_entry_at")
 
   // Relations
-  category     Category   @relation(fields: [categoryName], references: [name])
-  salesWeekly  SaleWeekly[]
+  category      Category     @relation(fields: [categoryName], references: [name])
+  salesWeekly   SaleWeekly[]
   outgoingStock OutgoingStock[]
 
   @@map("inventory")

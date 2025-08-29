@@ -16,6 +16,7 @@ import {
   Select,
   MenuItem,
   Button,
+  Chip,
 } from "@mui/material";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -29,6 +30,10 @@ import {
   Legend,
 } from "recharts";
 import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
+import AttachMoneyRounded from "@mui/icons-material/AttachMoneyRounded";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import Inventory2Rounded from "@mui/icons-material/Inventory2Rounded";
+import WarningAmberRounded from "@mui/icons-material/WarningAmberRounded";
 import * as XLSX from "xlsx";
 import { inventoryService } from "../../services/inventory";
 import { salesService } from "../../services/sales";
@@ -76,6 +81,7 @@ const AnalyticsPage: React.FC = () => {
   const [salesByDay, setSalesByDay] = useState<SalesByDayRow[]>([]);
   const [topCategories, setTopCategories] = useState<CategoryRow[]>([]);
   const [timeRange, setTimeRange] = useState<TimeRange>("currentWeek");
+  const [recentEntries, setRecentEntries] = useState<InventoryItem[]>([]);
 
   const load = async (range: TimeRange) => {
     setLoading(true);
@@ -97,6 +103,18 @@ const AnalyticsPage: React.FC = () => {
 
       const salesData = salesRes.data?.data;
       setSalesByDay((salesData?.salesByDay as SalesByDayRow[]) || []);
+
+      // Load inventory to derive Recent Entry and Date (two fields only)
+      const allInv = await fetchAllInventory();
+      const list = allInv
+        .filter((i) => (i.recentEntry ?? 0) > 0 && i.recentEntryAt)
+        .sort(
+          (a, b) =>
+            new Date(b.recentEntryAt as any).getTime() -
+            new Date(a.recentEntryAt as any).getTime()
+        )
+        .slice(0, 20);
+      setRecentEntries(list);
     } catch (e: any) {
       toast.error(
         e?.response?.data?.error?.message || "Failed to load analytics"
@@ -108,6 +126,7 @@ const AnalyticsPage: React.FC = () => {
 
   useEffect(() => {
     load(timeRange);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
   const currency = (n: number) =>
@@ -115,6 +134,9 @@ const AnalyticsPage: React.FC = () => {
       style: "currency",
       currency: "RWF",
     }).format(n || 0);
+
+  // Nicely format integers
+  const fmt = (n: number) => new Intl.NumberFormat().format(n || 0);
 
   // Map timeRange -> startDate/endDate ISO strings for Sales/Outgoing export
   const getDateRange = (
@@ -505,7 +527,9 @@ const AnalyticsPage: React.FC = () => {
           sx={{ mb: 3 }}
           spacing={2}
         >
-          <Typography variant="h4">Analytics</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Analytics
+          </Typography>
           <Stack direction="row" spacing={1} alignItems="center">
             <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel id="range">Time Range</InputLabel>
@@ -528,6 +552,9 @@ const AnalyticsPage: React.FC = () => {
               onClick={exportToExcel}
               startIcon={<FileDownloadRoundedIcon />}
               disabled={loading || exporting}
+              sx={{
+                fontWeight: 700,
+              }}
             >
               {exporting ? "Exporting…" : "Download Excel"}
             </Button>
@@ -535,51 +562,92 @@ const AnalyticsPage: React.FC = () => {
         </Stack>
 
         <Grid container spacing={3}>
+          {/* Metric: Total Revenue */}
           <Grid item xs={12} md={6} lg={3}>
-            <Card>
-              <CardContent>
-                <Typography variant="subtitle2">Total Revenue</Typography>
-                <Typography variant="h5" color="primary">
-                  {loading ? "…" : currency(metrics?.totalRevenue || 0)}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={6} lg={3}>
-            <Card>
-              <CardContent>
-                <Typography variant="subtitle2">Total Sales</Typography>
-                <Typography variant="h5" color="primary">
-                  {loading ? "…" : metrics?.totalSales || 0}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={6} lg={3}>
-            <Card>
-              <CardContent>
-                <Typography variant="subtitle2">Inventory Items</Typography>
-                <Typography variant="h5" color="primary">
-                  {loading ? "…" : metrics?.totalItems || 0}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={6} lg={3}>
-            <Card>
-              <CardContent>
-                <Typography variant="subtitle2">Low Stock</Typography>
-                <Typography variant="h5" color="error">
-                  {loading ? "…" : metrics?.lowStockItems || 0}
-                </Typography>
+            <Card sx={{ overflow: "hidden", border: "1px solid rgba(64,199,147,0.15)" }}>
+              <Box sx={{ height: 4, background: "linear-gradient(90deg,#40c793,#249e70)" }} />
+              <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box>
+                  <Typography variant="overline" sx={{ letterSpacing: 1, color: "text.secondary" }}>
+                    Total Revenue
+                  </Typography>
+                  <Typography variant="h4" color="primary" sx={{ fontWeight: 800 }}>
+                    {loading ? "…" : currency(metrics?.totalRevenue || 0)}
+                  </Typography>
+                </Box>
+                <Box sx={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(64,199,147,0.15)" }}>
+                  <AttachMoneyRounded sx={{ color: "primary.main" }} />
+                </Box>
               </CardContent>
             </Card>
           </Grid>
 
+          {/* Metric: Total Sales */}
+          <Grid item xs={12} md={6} lg={3}>
+            <Card sx={{ overflow: "hidden", border: "1px solid rgba(129,199,132,0.18)" }}>
+              <Box sx={{ height: 4, background: "linear-gradient(90deg,#81c784,#43a047)" }} />
+              <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box>
+                  <Typography variant="overline" sx={{ letterSpacing: 1, color: "text.secondary" }}>
+                    Total Sales
+                  </Typography>
+                  <Typography variant="h4" color="primary" sx={{ fontWeight: 800 }}>
+                    {loading ? "…" : fmt(metrics?.totalSales || 0)}
+                  </Typography>
+                </Box>
+                <Box sx={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(67,160,71,0.18)" }}>
+                  <ShoppingCartIcon sx={{ color: "#81c784" }} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Metric: Inventory Items */}
+          <Grid item xs={12} md={6} lg={3}>
+            <Card sx={{ overflow: "hidden", border: "1px solid rgba(100,181,246,0.15)" }}>
+              <Box sx={{ height: 4, background: "linear-gradient(90deg,#64b5f6,#1e88e5)" }} />
+              <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box>
+                  <Typography variant="overline" sx={{ letterSpacing: 1, color: "text.secondary" }}>
+                    Inventory Items
+                  </Typography>
+                  <Typography variant="h4" color="primary" sx={{ fontWeight: 800 }}>
+                    {loading ? "…" : fmt(metrics?.totalItems || 0)}
+                  </Typography>
+                </Box>
+                <Box sx={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(30,136,229,0.18)" }}>
+                  <Inventory2Rounded sx={{ color: "#64b5f6" }} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Metric: Low Stock */}
+          <Grid item xs={12} md={6} lg={3}>
+            <Card sx={{ overflow: "hidden", border: "1px solid rgba(255,138,101,0.15)" }}>
+              <Box sx={{ height: 4, background: "linear-gradient(90deg,#ffb74d,#fb8c00)" }} />
+              <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box>
+                  <Typography variant="overline" sx={{ letterSpacing: 1, color: "text.secondary" }}>
+                    Low Stock
+                  </Typography>
+                  <Typography variant="h4" color="error" sx={{ fontWeight: 800 }}>
+                    {loading ? "…" : fmt(metrics?.lowStockItems || 0)}
+                  </Typography>
+                </Box>
+                <Box sx={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(251,140,0,0.18)" }}>
+                  <WarningAmberRounded sx={{ color: "#ffb74d" }} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Revenue by Month */}
           <Grid item xs={12} md={6}>
-            <Card>
+            <Card sx={{ overflow: "hidden", border: "1px solid rgba(64,199,147,0.15)" }}>
+              <Box sx={{ height: 4, background: "linear-gradient(90deg,#40c793,#249e70)" }} />
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Revenue by Month
                 </Typography>
                 <Box sx={{ height: 280 }}>
@@ -587,14 +655,8 @@ const AnalyticsPage: React.FC = () => {
                     <BarChart data={revenueByMonth}>
                       <XAxis dataKey="month" />
                       <YAxis />
-                      <Tooltip
-                        formatter={(v: any) => currency(Number(v) || 0)}
-                      />
-                      <Bar
-                        dataKey="revenue"
-                        fill="#40c793"
-                        radius={[6, 6, 0, 0]}
-                      />
+                      <Tooltip formatter={(v: any) => currency(Number(v) || 0)} />
+                      <Bar dataKey="revenue" fill="#40c793" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -602,10 +664,12 @@ const AnalyticsPage: React.FC = () => {
             </Card>
           </Grid>
 
+          {/* Sales by Payment */}
           <Grid item xs={12} md={6}>
-            <Card>
+            <Card sx={{ overflow: "hidden", border: "1px solid rgba(38,198,218,0.15)" }}>
+              <Box sx={{ height: 4, background: "linear-gradient(90deg,#26c6da,#00acc1)" }} />
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Sales by Payment Method
                 </Typography>
                 <Box sx={{ height: 280 }}>
@@ -619,16 +683,9 @@ const AnalyticsPage: React.FC = () => {
                     >
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip
-                        formatter={(v: any) => currency(Number(v) || 0)}
-                      />
+                      <Tooltip formatter={(v: any) => currency(Number(v) || 0)} />
                       <Legend />
-                      <Bar
-                        dataKey="revenue"
-                        name="Revenue"
-                        fill="#40c793"
-                        radius={[6, 6, 0, 0]}
-                      />
+                      <Bar dataKey="revenue" name="Revenue" fill="#26c6da" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -636,10 +693,12 @@ const AnalyticsPage: React.FC = () => {
             </Card>
           </Grid>
 
+          {/* Sales by Day (Mon–Sun) */}
           <Grid item xs={12}>
-            <Card>
+            <Card sx={{ overflow: "hidden", border: "1px solid rgba(186,104,200,0.18)" }}>
+              <Box sx={{ height: 4, background: "linear-gradient(90deg,#ba68c8,#8e24aa)" }} />
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Current Week: Sales by Day (Mon–Sun)
                 </Typography>
                 <Box sx={{ height: 280 }}>
@@ -649,18 +708,8 @@ const AnalyticsPage: React.FC = () => {
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar
-                        dataKey="items_count"
-                        name="Items Sold (Qty)"
-                        fill="#40c793"
-                        radius={[6, 6, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="revenue"
-                        name="Revenue"
-                        fill="#8884d8"
-                        radius={[6, 6, 0, 0]}
-                      />
+                      <Bar dataKey="items_count" name="Items Sold (Qty)" fill="#40c793" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="revenue" name="Revenue" fill="#8e24aa" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -668,30 +717,21 @@ const AnalyticsPage: React.FC = () => {
             </Card>
           </Grid>
 
+          {/* Top Categories */}
           <Grid item xs={12}>
-            <Card>
+            <Card sx={{ overflow: "hidden", border: "1px solid rgba(100,181,246,0.15)" }}>
+              <Box sx={{ height: 4, background: "linear-gradient(90deg,#64b5f6,#1e88e5)" }} />
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Top Categories (by quantity)
                 </Typography>
                 <Box sx={{ height: 280 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={topCategories.map((c) => ({
-                        name: c.category || "N/A",
-                        qty: c._sum?.quantity || 0,
-                      }))}
-                    >
-                      <XAxis
-                        dataKey="name"
-                        interval={0}
-                        angle={-20}
-                        textAnchor="end"
-                        height={60}
-                      />
+                    <BarChart data={topCategories.map((c) => ({ name: c.category || "N/A", qty: c._sum?.quantity || 0 }))}>
+                      <XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} />
                       <YAxis />
                       <Tooltip />
-                      <Bar dataKey="qty" fill="#0088FE" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="qty" fill="#1e88e5" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -699,23 +739,57 @@ const AnalyticsPage: React.FC = () => {
             </Card>
           </Grid>
 
+          {/* Recent Sales */}
           <Grid item xs={12}>
-            <Card>
+            <Card sx={{ overflow: "hidden", border: "1px solid rgba(64,199,147,0.15)" }}>
+              <Box sx={{ height: 4, background: "linear-gradient(90deg,#40c793,#249e70)" }} />
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Recent Sales
                 </Typography>
                 <List>
                   {recent.map((r) => (
-                    <ListItem key={r.id} divider>
+                    <ListItem key={r.id} divider sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <ListItemText
-                        primary={`${r.itemName} x${r.quantity} - ${currency(
-                          r.price
-                        )}`}
+                        primaryTypographyProps={{ sx: { fontWeight: 600 } }}
+                        primary={`${r.itemName} x${r.quantity} — ${currency(r.price)}`}
                         secondary={new Date(r.timeStamp).toLocaleString()}
+                      />
+                      {r.paymentMethod && <Chip label={r.paymentMethod} size="small" color="default" variant="outlined" />}
+                    </ListItem>
+                  ))}
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Recent Stock Entries */}
+          <Grid item xs={12} md={6}>
+            <Card sx={{ overflow: "hidden", border: "1px solid rgba(38,198,218,0.15)" }}>
+              <Box sx={{ height: 4, background: "linear-gradient(90deg,#26c6da,#00acc1)" }} />
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
+                  Recent Stock Entries (Qty & Date)
+                </Typography>
+                <List>
+                  {recentEntries.map((it) => (
+                    <ListItem key={it.id} divider>
+                      <ListItemText
+                        primaryTypographyProps={{ sx: { fontWeight: 600 } }}
+                        primary={`${it.name}`}
+                        secondary={
+                          it.recentEntryAt
+                            ? `+${it.recentEntry ?? 0} — ${new Date(it.recentEntryAt as any).toLocaleString()}`
+                            : "+0 — -"
+                        }
                       />
                     </ListItem>
                   ))}
+                  {!loading && recentEntries.length === 0 && (
+                    <ListItem>
+                      <ListItemText primary="No recent stock entries" />
+                    </ListItem>
+                  )}
                 </List>
               </CardContent>
             </Card>

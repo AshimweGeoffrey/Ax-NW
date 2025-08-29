@@ -8,6 +8,13 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import dotenv from "dotenv";
 
+// Load environment variables ASAP
+dotenv.config();
+// Set process timezone early (recommended to also set via container/env)
+if (!process.env.TZ && process.env.APP_TZ) {
+  process.env.TZ = process.env.APP_TZ;
+}
+
 // Import routes
 import authRoutes from "./routes/auth";
 import inventoryRoutes from "./routes/inventory";
@@ -29,11 +36,11 @@ import { logger } from "./utils/logger";
 import { connectDatabase } from "./utils/database";
 import { setupSocketIO } from "./utils/socketIO";
 
-// Load environment variables
-dotenv.config();
-
 const app = express();
 const httpServer = createServer(app);
+
+// Log timezone in use
+logger.info(`🌍 Process timezone: ${process.env.TZ || "(system default)"}`);
 
 // Initialize Socket.IO
 const io = setupSocketIO(httpServer);

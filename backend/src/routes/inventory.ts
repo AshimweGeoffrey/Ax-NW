@@ -139,21 +139,34 @@ router.post(
       throw createError("Item with this name already exists", 400);
     }
 
+    const now = new Date();
     const item = await prisma.inventory.create({
       data: {
         name: data.name,
         id: randomUUID(),
         categoryName: data.categoryName,
         inventoryQuantity: data.inventoryQuantity,
-        incomingTimeStamp: new Date(),
+        incomingTimeStamp: now,
       },
     });
 
+    // Set recent_entry via raw SQL to avoid Prisma client mismatches
     if (data.inventoryQuantity > 0) {
+      try {
+        await prisma.$executeRawUnsafe(
+          "UPDATE `inventory` SET `recent_entry` = ?, `recent_entry_at` = ? WHERE `name` = ?",
+          data.inventoryQuantity,
+          now,
+          item.name
+        );
+      } catch {
+        // Ignore if column doesn't exist yet
+      }
+
       await prisma.remark.create({
         data: {
           id: randomUUID(),
-          timeStamp: new Date(),
+          timeStamp: now,
           message: `Initial stock for ${item.name}: +${data.inventoryQuantity}${
             req.user ? ` by ${req.user.name}` : ""
           }`,
@@ -191,10 +204,57 @@ router.put(
       throw createError("Item not found", 404);
     }
 
+    const updateData: any = {};
+    let positiveDelta: number | null = null;
+
+    if (typeof changes.categoryName === "string") {
+      updateData.categoryName = changes.categoryName;
+    }
+
+    if (typeof changes.inventoryQuantity === "number") {
+      const newQty = changes.inventoryQuantity;
+      if (newQty < 0) throw createError("Quantity cannot be negative", 400);
+      const delta = newQty - exist.inventoryQuantity;
+      if (delta < 0 && req.user?.role !== "Administrator") {
+        throw createError(
+          "Only administrators can reduce stock (negative input)",
+          403
+        );
+      }
+      updateData.inventoryQuantity = newQty;
+      if (delta > 0) positiveDelta = delta;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw createError("No changes to apply", 400);
+    }
+
     const updated = await prisma.inventory.update({
       where: { name: req.params.name },
-      data: changes,
+      data: updateData,
     });
+
+    // If this PUT increased quantity, set recent_entry fields and add a remark
+    if (positiveDelta && positiveDelta > 0) {
+      try {
+        await prisma.$executeRawUnsafe(
+          "UPDATE `inventory` SET `recent_entry` = ?, `recent_entry_at` = ? WHERE `name` = ?",
+          positiveDelta,
+          new Date(),
+          updated.name
+        );
+      } catch {}
+
+      await prisma.remark.create({
+        data: {
+          id: randomUUID(),
+          timeStamp: new Date(),
+          message: `Adjust ${updated.name}: +${positiveDelta} by ${
+            req.user?.name || "system"
+          } (absolute update)`,
+        },
+      });
+    }
 
     res.json({
       success: true,
@@ -243,6 +303,20 @@ router.post(
       where: { name: item.name },
       data: { inventoryQuantity: newQty },
     });
+
+    // Update recent_entry via raw SQL on positive additions
+    if (quantityChange > 0) {
+      try {
+        await prisma.$executeRawUnsafe(
+          "UPDATE `inventory` SET `recent_entry` = ?, `recent_entry_at` = ? WHERE `name` = ?",
+          quantityChange,
+          new Date(),
+          item.name
+        );
+      } catch {
+        // Ignore if column doesn't exist yet
+      }
+    }
 
     await prisma.remark.create({
       data: {

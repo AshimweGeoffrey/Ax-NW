@@ -27,6 +27,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  TableContainer,
+  Chip,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
@@ -213,19 +215,31 @@ const InventoryPage: React.FC = () => {
           justifyContent="space-between"
           sx={{ mb: 3 }}
         >
-          <Typography variant="h4">Inventory</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>Inventory</Typography>
           {user?.role === "Administrator" && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => setOpenCreate(true)}
+              sx={{
+                fontWeight: 700,
+                borderRadius: 999,
+                px: 2.5,
+                background: "linear-gradient(135deg,#64b5f6,#1e88e5)",
+                boxShadow: "0 4px 14px rgba(30,136,229,0.35)",
+                "&:hover": {
+                  background: "linear-gradient(135deg,#42a5f5,#1976d2)",
+                  boxShadow: "0 6px 18px rgba(30,136,229,0.5)",
+                },
+              }}
             >
               New Item
             </Button>
           )}
         </Stack>
 
-        <Card sx={{ mb: 3 }}>
+        <Card sx={{ mb: 3, overflow: "hidden", border: "1px solid rgba(100,181,246,0.15)" }}>
+          <Box sx={{ height: 4, background: "linear-gradient(90deg,#64b5f6,#1e88e5)" }} />
           <CardContent>
             <Stack
               direction={{ xs: "column", sm: "row" }}
@@ -285,86 +299,106 @@ const InventoryPage: React.FC = () => {
         </Card>
 
         <Card>
-          <CardContent>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Category</TableCell>
-                  <TableCell align="right">Quantity</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={4}>Loading…</TableCell>
+          {/* Make table behave like Outgoing page: no inner scroll, page scrolls instead */}
+          <CardContent sx={{ p: 0 }}>
+            <TableContainer
+              sx={{
+                // removed maxHeight to avoid inner scroll
+                borderRadius: 1,
+                "& .MuiTableCell-root": { borderBottomColor: "rgba(255,255,255,0.06)" },
+              }}
+            >
+              <Table /* removed stickyHeader */ size="small">
+                <TableHead>
+                  <TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "rgba(64,199,147,0.12)" } }}>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Category</TableCell>
+                    <TableCell align="right">Quantity</TableCell>
+                    <TableCell align="right">Recent Entry</TableCell>
+                    <TableCell align="right">Recent Entry At</TableCell>
+                    <TableCell align="right" sx={{ width: 140 }}>Actions</TableCell>
                   </TableRow>
-                ) : items.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4}>No items found</TableCell>
-                  </TableRow>
-                ) : (
-                  items.map((it) => (
-                    <TableRow
-                      key={it.id}
-                      hover
-                      selected={it.inventoryQuantity < 3}
-                    >
-                      <TableCell>{it.name}</TableCell>
-                      <TableCell>{it.categoryName}</TableCell>
-                      <TableCell
-                        align="right"
-                        style={{
-                          color:
-                            it.inventoryQuantity === 0
-                              ? "#d32f2f"
-                              : it.inventoryQuantity < 3
-                              ? "#ed6c02"
-                              : undefined,
-                        }}
-                      >
-                        {it.inventoryQuantity}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          justifyContent="flex-end"
-                        >
-                          {user?.role === "Administrator" && (
-                            <IconButton
-                              color="primary"
-                              title="Adjust"
-                              onClick={() => openAdjustDialog(it.name)}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          )}
-                          {user?.role === "Administrator" && (
-                            <IconButton
-                              color="error"
-                              title="Delete"
-                              onClick={() => handleDelete(it.name)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          )}
-                        </Stack>
-                      </TableCell>
+                </TableHead>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={6}>Loading…</TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-            <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-              <Pagination
-                page={page}
-                count={totalPages}
-                onChange={(_e, p) => setPage(p)}
-                color="primary"
-              />
-            </Stack>
+                  ) : items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6}>No items found</TableCell>
+                    </TableRow>
+                  ) : (
+                    items.map((it) => (
+                      <TableRow
+                        key={it.id}
+                        hover
+                        selected={it.inventoryQuantity < 3}
+                        sx={{ "&:nth-of-type(odd)": { backgroundColor: "rgba(255,255,255,0.02)" } }}
+                      >
+                        <TableCell>{it.name}</TableCell>
+                        <TableCell>{it.categoryName}</TableCell>
+                        <TableCell align="right">
+                          <Chip
+                            size="small"
+                            label={it.inventoryQuantity}
+                            color={
+                              it.inventoryQuantity === 0
+                                ? "error"
+                                : it.inventoryQuantity < 3
+                                ? "warning"
+                                : "success"
+                            }
+                            variant={it.inventoryQuantity < 3 ? "filled" : "outlined"}
+                          />
+                        </TableCell>
+                        <TableCell align="right">{it.recentEntry ?? 0}</TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" color="text.secondary">
+                            {it.recentEntryAt
+                              ? new Date(it.recentEntryAt).toLocaleString()
+                              : "-"}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                            {user?.role === "Administrator" && (
+                              <IconButton
+                                color="primary"
+                                title="Adjust"
+                                onClick={() => openAdjustDialog(it.name)}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                            )}
+                            {user?.role === "Administrator" && (
+                              <IconButton
+                                color="error"
+                                title="Delete"
+                                onClick={() => handleDelete(it.name)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            )}
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Box sx={{ px: 2, py: 1.5 }}>
+              <Stack direction="row" justifyContent="flex-end">
+                <Pagination
+                  page={page}
+                  count={totalPages}
+                  onChange={(_e, p) => setPage(p)}
+                  color="primary"
+                />
+              </Stack>
+            </Box>
           </CardContent>
         </Card>
       </Container>
