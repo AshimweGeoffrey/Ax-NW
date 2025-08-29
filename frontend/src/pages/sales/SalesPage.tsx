@@ -209,22 +209,47 @@ const SalesPage: React.FC = () => {
           justifyContent="space-between"
           sx={{ mb: 3 }}
         >
-          <Typography variant="h4">Sales</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>Sales</Typography>
           <Stack direction="row" spacing={1}>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => setOpenCreate(true)}
+              sx={{
+                fontWeight: 700,
+                borderRadius: 999,
+                px: 2.5,
+                background: "linear-gradient(135deg,#40c793,#249e70)",
+                color: "#0f1115",
+                boxShadow: "0 4px 14px rgba(64,199,147,0.3)",
+                "&:hover": {
+                  background: "linear-gradient(135deg,#2aa574,#1b845a)",
+                  boxShadow: "0 6px 18px rgba(64,199,147,0.45)",
+                },
+              }}
             >
               New Sale
             </Button>
-            <Button variant="outlined" onClick={() => navigate("/outgoing")}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate("/outgoing")}
+              sx={{
+                borderRadius: 999,
+                borderColor: "rgba(64,199,147,0.45)",
+                color: "primary.main",
+                "&:hover": {
+                  borderColor: "primary.main",
+                  backgroundColor: "rgba(64,199,147,0.08)",
+                },
+              }}
+            >
               Record Outgoing
             </Button>
           </Stack>
         </Stack>
 
-        <Card sx={{ mb: 3 }}>
+        <Card sx={{ mb: 3, overflow: "hidden", border: "1px solid rgba(64,199,147,0.15)" }}>
+          <Box sx={{ height: 4, background: "linear-gradient(90deg,#40c793,#249e70)" }} />
           <CardContent>
             <Stack
               direction={{ xs: "column", md: "row" }}

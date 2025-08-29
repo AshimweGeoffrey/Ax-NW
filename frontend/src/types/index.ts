@@ -24,6 +24,9 @@ export interface InventoryItem {
   categoryName: string;
   inventoryQuantity: number;
   incomingTimeStamp?: Date;
+  // New fields
+  recentEntry?: number;
+  recentEntryAt?: Date | string | null;
 }
 
 export interface Sale {

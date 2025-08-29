@@ -70,23 +70,24 @@ const Login: React.FC = () => {
           width: "100%",
           borderRadius: 3,
           overflow: "hidden",
+          bgcolor: "background.paper",
+          border: "1px solid rgba(64,199,147,0.15)",
+          boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
         }}
       >
         <Box
           sx={{
-            background: "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
+            background: "linear-gradient(135deg, #40c793 0%, #249e70 100%)",
             color: "white",
             py: 4,
             px: 3,
             textAlign: "center",
+            borderBottom: "1px solid rgba(64,199,147,0.35)",
           }}
         >
           <LoginIcon sx={{ fontSize: 48, mb: 2 }} />
           <Typography variant="h4" component="h1" fontWeight="bold">
             AX Stock
-          </Typography>
-          <Typography variant="subtitle1" sx={{ opacity: 0.9, mt: 1 }}>
-            Inventory Management System
           </Typography>
         </Box>
 
@@ -110,7 +111,18 @@ const Login: React.FC = () => {
               value={formData.username}
               onChange={handleChange}
               disabled={isLoading}
-              sx={{ mb: 2 }}
+              sx={{
+                mb: 2,
+                "& .MuiOutlinedInput-root > fieldset": {
+                  borderColor: "rgba(64,199,147,0.25)",
+                },
+                "& .MuiOutlinedInput-root:hover > fieldset": {
+                  borderColor: "rgba(64,199,147,0.45)",
+                },
+                "& .MuiOutlinedInput-root.Mui-focused > fieldset": {
+                  borderColor: "primary.main",
+                },
+              }}
             />
 
             <TextField
@@ -138,7 +150,18 @@ const Login: React.FC = () => {
                   </InputAdornment>
                 ),
               }}
-              sx={{ mb: 3 }}
+              sx={{
+                mb: 3,
+                "& .MuiOutlinedInput-root > fieldset": {
+                  borderColor: "rgba(64,199,147,0.25)",
+                },
+                "& .MuiOutlinedInput-root:hover > fieldset": {
+                  borderColor: "rgba(64,199,147,0.45)",
+                },
+                "& .MuiOutlinedInput-root.Mui-focused > fieldset": {
+                  borderColor: "primary.main",
+                },
+              }}
             />
 
             <Button
@@ -150,11 +173,14 @@ const Login: React.FC = () => {
               sx={{
                 py: 1.5,
                 fontSize: "1.1rem",
-                fontWeight: 600,
-                background: "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
+                fontWeight: 700,
+                color: "#0f1115",
+                background: "linear-gradient(135deg, #40c793 0%, #249e70 100%)",
+                boxShadow: "0 4px 14px rgba(64,199,147,0.3)",
                 "&:hover": {
                   background:
-                    "linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)",
+                    "linear-gradient(135deg, #2aa574 0%, #1b845a 100%)",
+                  boxShadow: "0 6px 18px rgba(64,199,147,0.45)",
                 },
               }}
             >

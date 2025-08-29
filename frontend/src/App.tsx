@@ -15,7 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import { Toaster } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
 
 // Import components (to be created)
 import Login from "./pages/auth/Login";
@@ -29,6 +29,7 @@ import NoticesPage from "./pages/notices/NoticesPage";
 
 // Import hooks and stores
 import { useAuthStore } from "./store/authStore";
+import { useNotificationStore } from "./store/notificationStore";
 
 // Create theme
 const theme = createTheme({
@@ -95,12 +96,49 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 function App() {
   const { isAuthenticated, user, getCurrentUser } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const addNotification = useNotificationStore((s) => s.add);
 
   useEffect(() => {
     if (isAuthenticated && !user) {
       getCurrentUser().catch(() => {});
     }
   }, [isAuthenticated, user, getCurrentUser]);
+
+  // Intercept and cache toast calls
+  useEffect(() => {
+    const orig = {
+      success: toast.success,
+      error: toast.error,
+      loading: toast.loading,
+      custom: toast.custom,
+      // info/blank fallbacks
+    } as const;
+
+    toast.success = ((message: any, opts?: any) => {
+      try { addNotification({ type: "success", message: String(message), path: window.location.pathname }); } catch {}
+      return orig.success(message, opts);
+    }) as any;
+    toast.error = ((message: any, opts?: any) => {
+      try { addNotification({ type: "error", message: String(message), path: window.location.pathname }); } catch {}
+      return orig.error(message, opts);
+    }) as any;
+    toast.loading = ((message: any, opts?: any) => {
+      try { addNotification({ type: "loading", message: String(message), path: window.location.pathname }); } catch {}
+      return orig.loading(message, opts);
+    }) as any;
+    toast.custom = ((renderer: any, opts?: any) => {
+      // custom content not captured as text reliably; skip
+      return orig.custom(renderer, opts);
+    }) as any;
+
+    return () => {
+      // restore on unmount to avoid leaks during tests/HMR
+      toast.success = orig.success as any;
+      toast.error = orig.error as any;
+      toast.loading = orig.loading as any;
+      toast.custom = orig.custom as any;
+    };
+  }, [addNotification]);
 
   // Ensure browser tab title is set correctly
   useEffect(() => {
