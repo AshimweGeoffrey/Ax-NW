@@ -115,15 +115,33 @@ function App() {
     } as const;
 
     toast.success = ((message: any, opts?: any) => {
-      try { addNotification({ type: "success", message: String(message), path: window.location.pathname }); } catch {}
+      try {
+        addNotification({
+          type: "success",
+          message: String(message),
+          path: window.location.pathname,
+        });
+      } catch {}
       return orig.success(message, opts);
     }) as any;
     toast.error = ((message: any, opts?: any) => {
-      try { addNotification({ type: "error", message: String(message), path: window.location.pathname }); } catch {}
+      try {
+        addNotification({
+          type: "error",
+          message: String(message),
+          path: window.location.pathname,
+        });
+      } catch {}
       return orig.error(message, opts);
     }) as any;
     toast.loading = ((message: any, opts?: any) => {
-      try { addNotification({ type: "loading", message: String(message), path: window.location.pathname }); } catch {}
+      try {
+        addNotification({
+          type: "loading",
+          message: String(message),
+          path: window.location.pathname,
+        });
+      } catch {}
       return orig.loading(message, opts);
     }) as any;
     toast.custom = ((renderer: any, opts?: any) => {

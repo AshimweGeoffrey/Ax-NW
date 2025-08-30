@@ -132,9 +132,6 @@ JWT_REFRESH_SECRET=ax_stock_refresh_secret_2024_development
 JWT_EXPIRES_IN=24h
 JWT_REFRESH_EXPIRES_IN=7d
 
-# Redis
-REDIS_URL=redis://localhost:6379
-
 # App
 NODE_ENV=development
 PORT=3001
@@ -203,8 +200,8 @@ build_docker() {
 start_services() {
     print_header "Starting services..."
     
-    docker-compose up -d mysql redis
-    print_status "Database and Redis services started"
+    docker-compose up -d mysql
+    print_status "Database service started"
     
     # Wait for MySQL to be ready
     print_status "Waiting for MySQL to be ready..."
