@@ -215,7 +215,9 @@ const InventoryPage: React.FC = () => {
           justifyContent="space-between"
           sx={{ mb: 3 }}
         >
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>Inventory</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Inventory
+          </Typography>
           {user?.role === "Administrator" && (
             <Button
               variant="contained"
@@ -238,8 +240,19 @@ const InventoryPage: React.FC = () => {
           )}
         </Stack>
 
-        <Card sx={{ mb: 3, overflow: "hidden", border: "1px solid rgba(100,181,246,0.15)" }}>
-          <Box sx={{ height: 4, background: "linear-gradient(90deg,#64b5f6,#1e88e5)" }} />
+        <Card
+          sx={{
+            mb: 3,
+            overflow: "hidden",
+            border: "1px solid rgba(100,181,246,0.15)",
+          }}
+        >
+          <Box
+            sx={{
+              height: 4,
+              background: "linear-gradient(90deg,#64b5f6,#1e88e5)",
+            }}
+          />
           <CardContent>
             <Stack
               direction={{ xs: "column", sm: "row" }}
@@ -305,18 +318,29 @@ const InventoryPage: React.FC = () => {
               sx={{
                 // removed maxHeight to avoid inner scroll
                 borderRadius: 1,
-                "& .MuiTableCell-root": { borderBottomColor: "rgba(255,255,255,0.06)" },
+                "& .MuiTableCell-root": {
+                  borderBottomColor: "rgba(255,255,255,0.06)",
+                },
               }}
             >
               <Table /* removed stickyHeader */ size="small">
                 <TableHead>
-                  <TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "rgba(64,199,147,0.12)" } }}>
+                  <TableRow
+                    sx={{
+                      "& th": {
+                        fontWeight: 700,
+                        bgcolor: "rgba(64,199,147,0.12)",
+                      },
+                    }}
+                  >
                     <TableCell>Name</TableCell>
                     <TableCell>Category</TableCell>
                     <TableCell align="right">Quantity</TableCell>
                     <TableCell align="right">Recent Entry</TableCell>
                     <TableCell align="right">Recent Entry At</TableCell>
-                    <TableCell align="right" sx={{ width: 140 }}>Actions</TableCell>
+                    <TableCell align="right" sx={{ width: 140 }}>
+                      Actions
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -334,7 +358,11 @@ const InventoryPage: React.FC = () => {
                         key={it.id}
                         hover
                         selected={it.inventoryQuantity < 3}
-                        sx={{ "&:nth-of-type(odd)": { backgroundColor: "rgba(255,255,255,0.02)" } }}
+                        sx={{
+                          "&:nth-of-type(odd)": {
+                            backgroundColor: "rgba(255,255,255,0.02)",
+                          },
+                        }}
                       >
                         <TableCell>{it.name}</TableCell>
                         <TableCell>{it.categoryName}</TableCell>
@@ -349,10 +377,14 @@ const InventoryPage: React.FC = () => {
                                 ? "warning"
                                 : "success"
                             }
-                            variant={it.inventoryQuantity < 3 ? "filled" : "outlined"}
+                            variant={
+                              it.inventoryQuantity < 3 ? "filled" : "outlined"
+                            }
                           />
                         </TableCell>
-                        <TableCell align="right">{it.recentEntry ?? 0}</TableCell>
+                        <TableCell align="right">
+                          {it.recentEntry ?? 0}
+                        </TableCell>
                         <TableCell align="right">
                           <Typography variant="body2" color="text.secondary">
                             {it.recentEntryAt
@@ -361,7 +393,11 @@ const InventoryPage: React.FC = () => {
                           </Typography>
                         </TableCell>
                         <TableCell align="right">
-                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            justifyContent="flex-end"
+                          >
                             {user?.role === "Administrator" && (
                               <IconButton
                                 color="primary"

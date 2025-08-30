@@ -97,7 +97,9 @@ const Dashboard: React.FC = () => {
 
   const [noticeMessage, setNoticeMessage] = useState("");
 
-  const [typeFilter, setTypeFilter] = useState<"all" | "success" | "error" | "loading">("all");
+  const [typeFilter, setTypeFilter] = useState<
+    "all" | "success" | "error" | "loading"
+  >("all");
 
   const PAYMENT_OPTIONS: Array<"Cash" | "Mobile Money" | "Card"> = [
     "Cash",
@@ -492,13 +494,18 @@ const Dashboard: React.FC = () => {
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Quick Actions
                 </Typography>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={2}
+                  sx={{ flexWrap: "wrap", rowGap: 1 }}
+                >
                   {/* Conduct Sale - Green */}
                   <Button
                     variant="contained"
                     startIcon={<ShoppingCartIcon />}
                     onClick={() => setOpenSale(true)}
                     sx={{
+                      width: { xs: "100%", sm: "auto" },
                       borderRadius: 999,
                       px: 2.5,
                       py: 1.25,
@@ -520,6 +527,7 @@ const Dashboard: React.FC = () => {
                     startIcon={<OutboundIcon />}
                     onClick={() => setOpenOutgoing(true)}
                     sx={{
+                      width: { xs: "100%", sm: "auto" },
                       borderRadius: 999,
                       px: 2.5,
                       py: 1.25,
@@ -541,6 +549,7 @@ const Dashboard: React.FC = () => {
                     startIcon={<AddBoxIcon />}
                     onClick={() => setOpenAddItem(true)}
                     sx={{
+                      width: { xs: "100%", sm: "auto" },
                       borderRadius: 999,
                       px: 2.5,
                       py: 1.25,
@@ -562,6 +571,7 @@ const Dashboard: React.FC = () => {
                     startIcon={<UpgradeIcon />}
                     onClick={() => setOpenUpdateItem(true)}
                     sx={{
+                      width: { xs: "100%", sm: "auto" },
                       borderRadius: 999,
                       px: 2.5,
                       py: 1.25,
@@ -583,6 +593,7 @@ const Dashboard: React.FC = () => {
                     startIcon={<CampaignIcon />}
                     onClick={() => setOpenNotice(true)}
                     sx={{
+                      width: { xs: "100%", sm: "auto" },
                       borderRadius: 999,
                       px: 2.5,
                       py: 1.25,
@@ -598,12 +609,14 @@ const Dashboard: React.FC = () => {
                     Add Notice
                   </Button>
 
-                  <Box sx={{ flexGrow: 1 }} />
+                  <Box
+                    sx={{ flexGrow: 1, display: { xs: "none", sm: "block" } }}
+                  />
                   <Button
                     variant="text"
                     onClick={logout}
                     color="error"
-                    sx={{ fontWeight: 600 }}
+                    sx={{ fontWeight: 600, width: { xs: "100%", sm: "auto" } }}
                   >
                     Logout
                   </Button>
@@ -614,51 +627,166 @@ const Dashboard: React.FC = () => {
 
           {/* Notification Center */}
           <Grid item xs={12} md={6}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(64,199,147,0.15)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#40c793,#249e70)" }} />
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(64,199,147,0.15)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#40c793,#249e70)",
+                }}
+              />
               <CardContent>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <NotificationsActiveIcon color="primary" />
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>Notification Center</Typography>
-                    <Chip size="small" label={notifications.length} />
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{ mb: 2, flexWrap: "wrap", rowGap: 1 }}
+                >
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    sx={{ flex: 1, minWidth: 0 }}
+                  >
+                    <Box
+                      sx={{
+                        flexShrink: 0,
+                        display: { xs: "none", sm: "inline-flex" },
+                      }}
+                    >
+                      <NotificationsActiveIcon color="primary" />
+                    </Box>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 700,
+                        flex: 1,
+                        minWidth: 0,
+                        fontSize: { xs: 16, sm: 20 },
+                        lineHeight: { xs: 1.25, sm: 1.3 },
+                        whiteSpace: { xs: "normal", sm: "nowrap" },
+                        overflow: { xs: "visible", sm: "hidden" },
+                        textOverflow: { sm: "ellipsis" },
+                        wordBreak: "break-word",
+                        display: { xs: "none", sm: "block" },
+                      }}
+                    >
+                      Notification Center
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={notifications.length}
+                      sx={{
+                        flexShrink: 0,
+                        display: { xs: "none", sm: "inline-flex" },
+                      }}
+                    />
                   </Stack>
-                  <Stack direction="row" spacing={1}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                    spacing={1}
+                    sx={{
+                      width: { xs: "100%", sm: "auto" },
+                      mt: { xs: 1, sm: 0 },
+                    }}
+                  >
                     <ToggleButtonGroup
                       size="small"
                       exclusive
                       value={typeFilter}
                       onChange={(_e, v) => v && setTypeFilter(v)}
+                      sx={{
+                        width: { xs: "100%", sm: "auto" },
+                        maxWidth: "100%",
+                        overflow: "visible",
+                        px: 0,
+                        flexWrap: { xs: "wrap", sm: "nowrap" },
+                        gap: { xs: 0.5, sm: 0 },
+                        "& .MuiToggleButton-root": {
+                          px: 1,
+                          py: 0.25,
+                          fontSize: 12,
+                          whiteSpace: "nowrap",
+                          flex: { xs: "1 1 auto", sm: "0 0 auto" },
+                          minWidth: { xs: 0, sm: "auto" },
+                        },
+                      }}
                     >
                       <ToggleButton value="all">All</ToggleButton>
                       <ToggleButton value="success">Success</ToggleButton>
                       <ToggleButton value="error">Error</ToggleButton>
                       <ToggleButton value="loading">Loading</ToggleButton>
                     </ToggleButtonGroup>
-                    <Button variant="text" color="error" onClick={clearNotifications}>
+                    <Button
+                      variant="text"
+                      color="error"
+                      onClick={clearNotifications}
+                      sx={{ alignSelf: { xs: "flex-end", sm: "auto" } }}
+                    >
                       Clear
                     </Button>
                   </Stack>
                 </Stack>
 
                 {filteredNotifications.length === 0 ? (
-                  <Typography color="text.secondary">No notifications yet.</Typography>
+                  <Typography color="text.secondary">
+                    No notifications yet.
+                  </Typography>
                 ) : (
-                  <List sx={{ maxHeight: 360, overflowY: "auto" }}>
+                  <List
+                    sx={{
+                      maxHeight: { xs: 280, sm: 360 },
+                      overflowY: "auto",
+                      overflowX: "hidden",
+                      pr: 1,
+                      display: "block",
+                    }}
+                  >
                     {filteredNotifications.map((n) => (
-                      <ListItem key={n.id} divider sx={{ alignItems: "flex-start" }}>
-                        <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ width: "100%" }}>
+                      <ListItem
+                        key={n.id}
+                        divider
+                        sx={{ alignItems: "flex-start" }}
+                      >
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="flex-start"
+                          sx={{ width: "100%" }}
+                        >
                           {n.type === "success" ? (
-                            <CheckCircleOutlineIcon color="success" fontSize="small" />
+                            <CheckCircleOutlineIcon
+                              color="success"
+                              fontSize="small"
+                            />
                           ) : n.type === "error" ? (
                             <ErrorOutlineIcon color="error" fontSize="small" />
                           ) : (
                             <HistoryIcon color="info" fontSize="small" />
                           )}
                           <Stack sx={{ flex: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{n.message}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {timeAgo(n.createdAt)} {n.path ? `• ${n.path}` : ""}
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 600,
+                                wordBreak: "break-word",
+                                overflowWrap: "anywhere",
+                                whiteSpace: "normal",
+                              }}
+                            >
+                              {n.message}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {timeAgo(n.createdAt)}{" "}
+                              {n.path ? `• ${n.path}` : ""}
                             </Typography>
                           </Stack>
                         </Stack>

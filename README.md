@@ -692,17 +692,6 @@ services:
     networks:
       - ax_network
 
-  # Redis for caching and sessions
-  redis:
-    image: redis:7-alpine
-    container_name: ax_redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    networks:
-      - ax_network
-
   # Backend API
   backend:
     build:
@@ -718,14 +707,12 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
     ports:
       - "3001:3001"
     depends_on:
       - mysql
-      - redis
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/logs:/app/logs
@@ -769,7 +756,6 @@ services:
 
 volumes:
   mysql_data:
-  redis_data:
 
 networks:
   ax_network:
@@ -858,7 +844,6 @@ CMD ["nginx", "-g", "daemon off;"]
 - Git
 
 # Optional for local development
-- Redis 7+
 - Nginx
 ```
 
@@ -920,9 +905,6 @@ JWT_SECRET=your_jwt_secret_key_here
 JWT_REFRESH_SECRET=your_refresh_secret_key_here
 JWT_EXPIRES_IN=24h
 JWT_REFRESH_EXPIRES_IN=7d
-
-# Redis
-REDIS_URL=redis://localhost:6379
 
 # App
 NODE_ENV=development

@@ -209,7 +209,9 @@ const SalesPage: React.FC = () => {
           justifyContent="space-between"
           sx={{ mb: 3 }}
         >
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>Sales</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Sales
+          </Typography>
           <Stack direction="row" spacing={1}>
             <Button
               variant="contained"
@@ -248,8 +250,19 @@ const SalesPage: React.FC = () => {
           </Stack>
         </Stack>
 
-        <Card sx={{ mb: 3, overflow: "hidden", border: "1px solid rgba(64,199,147,0.15)" }}>
-          <Box sx={{ height: 4, background: "linear-gradient(90deg,#40c793,#249e70)" }} />
+        <Card
+          sx={{
+            mb: 3,
+            overflow: "hidden",
+            border: "1px solid rgba(64,199,147,0.15)",
+          }}
+        >
+          <Box
+            sx={{
+              height: 4,
+              background: "linear-gradient(90deg,#40c793,#249e70)",
+            }}
+          />
           <CardContent>
             <Stack
               direction={{ xs: "column", md: "row" }}
@@ -503,7 +516,10 @@ const SalesPage: React.FC = () => {
                 type="number"
                 value={editForm.quantity}
                 onChange={(e) =>
-                  setEditForm((f) => ({ ...f, quantity: Number(e.target.value) }))
+                  setEditForm((f) => ({
+                    ...f,
+                    quantity: Number(e.target.value),
+                  }))
                 }
                 fullWidth
               />

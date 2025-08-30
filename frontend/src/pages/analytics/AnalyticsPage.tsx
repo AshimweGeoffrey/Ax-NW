@@ -126,7 +126,7 @@ const AnalyticsPage: React.FC = () => {
 
   useEffect(() => {
     load(timeRange);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
   const currency = (n: number) =>
@@ -564,18 +564,51 @@ const AnalyticsPage: React.FC = () => {
         <Grid container spacing={3}>
           {/* Metric: Total Revenue */}
           <Grid item xs={12} md={6} lg={3}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(64,199,147,0.15)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#40c793,#249e70)" }} />
-              <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(64,199,147,0.15)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#40c793,#249e70)",
+                }}
+              />
+              <CardContent
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
                 <Box>
-                  <Typography variant="overline" sx={{ letterSpacing: 1, color: "text.secondary" }}>
+                  <Typography
+                    variant="overline"
+                    sx={{ letterSpacing: 1, color: "text.secondary" }}
+                  >
                     Total Revenue
                   </Typography>
-                  <Typography variant="h4" color="primary" sx={{ fontWeight: 800 }}>
+                  <Typography
+                    variant="h4"
+                    color="primary"
+                    sx={{ fontWeight: 800 }}
+                  >
                     {loading ? "…" : currency(metrics?.totalRevenue || 0)}
                   </Typography>
                 </Box>
-                <Box sx={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(64,199,147,0.15)" }}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: "rgba(64,199,147,0.15)",
+                  }}
+                >
                   <AttachMoneyRounded sx={{ color: "primary.main" }} />
                 </Box>
               </CardContent>
@@ -584,18 +617,51 @@ const AnalyticsPage: React.FC = () => {
 
           {/* Metric: Total Sales */}
           <Grid item xs={12} md={6} lg={3}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(129,199,132,0.18)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#81c784,#43a047)" }} />
-              <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(129,199,132,0.18)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#81c784,#43a047)",
+                }}
+              />
+              <CardContent
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
                 <Box>
-                  <Typography variant="overline" sx={{ letterSpacing: 1, color: "text.secondary" }}>
+                  <Typography
+                    variant="overline"
+                    sx={{ letterSpacing: 1, color: "text.secondary" }}
+                  >
                     Total Sales
                   </Typography>
-                  <Typography variant="h4" color="primary" sx={{ fontWeight: 800 }}>
+                  <Typography
+                    variant="h4"
+                    color="primary"
+                    sx={{ fontWeight: 800 }}
+                  >
                     {loading ? "…" : fmt(metrics?.totalSales || 0)}
                   </Typography>
                 </Box>
-                <Box sx={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(67,160,71,0.18)" }}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: "rgba(67,160,71,0.18)",
+                  }}
+                >
                   <ShoppingCartIcon sx={{ color: "#81c784" }} />
                 </Box>
               </CardContent>
@@ -604,18 +670,51 @@ const AnalyticsPage: React.FC = () => {
 
           {/* Metric: Inventory Items */}
           <Grid item xs={12} md={6} lg={3}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(100,181,246,0.15)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#64b5f6,#1e88e5)" }} />
-              <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(100,181,246,0.15)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#64b5f6,#1e88e5)",
+                }}
+              />
+              <CardContent
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
                 <Box>
-                  <Typography variant="overline" sx={{ letterSpacing: 1, color: "text.secondary" }}>
+                  <Typography
+                    variant="overline"
+                    sx={{ letterSpacing: 1, color: "text.secondary" }}
+                  >
                     Inventory Items
                   </Typography>
-                  <Typography variant="h4" color="primary" sx={{ fontWeight: 800 }}>
+                  <Typography
+                    variant="h4"
+                    color="primary"
+                    sx={{ fontWeight: 800 }}
+                  >
                     {loading ? "…" : fmt(metrics?.totalItems || 0)}
                   </Typography>
                 </Box>
-                <Box sx={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(30,136,229,0.18)" }}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: "rgba(30,136,229,0.18)",
+                  }}
+                >
                   <Inventory2Rounded sx={{ color: "#64b5f6" }} />
                 </Box>
               </CardContent>
@@ -624,18 +723,51 @@ const AnalyticsPage: React.FC = () => {
 
           {/* Metric: Low Stock */}
           <Grid item xs={12} md={6} lg={3}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(255,138,101,0.15)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#ffb74d,#fb8c00)" }} />
-              <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(255,138,101,0.15)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#ffb74d,#fb8c00)",
+                }}
+              />
+              <CardContent
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
                 <Box>
-                  <Typography variant="overline" sx={{ letterSpacing: 1, color: "text.secondary" }}>
+                  <Typography
+                    variant="overline"
+                    sx={{ letterSpacing: 1, color: "text.secondary" }}
+                  >
                     Low Stock
                   </Typography>
-                  <Typography variant="h4" color="error" sx={{ fontWeight: 800 }}>
+                  <Typography
+                    variant="h4"
+                    color="error"
+                    sx={{ fontWeight: 800 }}
+                  >
                     {loading ? "…" : fmt(metrics?.lowStockItems || 0)}
                   </Typography>
                 </Box>
-                <Box sx={{ width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(251,140,0,0.18)" }}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: "rgba(251,140,0,0.18)",
+                  }}
+                >
                   <WarningAmberRounded sx={{ color: "#ffb74d" }} />
                 </Box>
               </CardContent>
@@ -644,8 +776,18 @@ const AnalyticsPage: React.FC = () => {
 
           {/* Revenue by Month */}
           <Grid item xs={12} md={6}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(64,199,147,0.15)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#40c793,#249e70)" }} />
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(64,199,147,0.15)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#40c793,#249e70)",
+                }}
+              />
               <CardContent>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Revenue by Month
@@ -655,8 +797,14 @@ const AnalyticsPage: React.FC = () => {
                     <BarChart data={revenueByMonth}>
                       <XAxis dataKey="month" />
                       <YAxis />
-                      <Tooltip formatter={(v: any) => currency(Number(v) || 0)} />
-                      <Bar dataKey="revenue" fill="#40c793" radius={[6, 6, 0, 0]} />
+                      <Tooltip
+                        formatter={(v: any) => currency(Number(v) || 0)}
+                      />
+                      <Bar
+                        dataKey="revenue"
+                        fill="#40c793"
+                        radius={[6, 6, 0, 0]}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -666,8 +814,18 @@ const AnalyticsPage: React.FC = () => {
 
           {/* Sales by Payment */}
           <Grid item xs={12} md={6}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(38,198,218,0.15)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#26c6da,#00acc1)" }} />
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(38,198,218,0.15)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#26c6da,#00acc1)",
+                }}
+              />
               <CardContent>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Sales by Payment Method
@@ -683,9 +841,16 @@ const AnalyticsPage: React.FC = () => {
                     >
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip formatter={(v: any) => currency(Number(v) || 0)} />
+                      <Tooltip
+                        formatter={(v: any) => currency(Number(v) || 0)}
+                      />
                       <Legend />
-                      <Bar dataKey="revenue" name="Revenue" fill="#26c6da" radius={[6, 6, 0, 0]} />
+                      <Bar
+                        dataKey="revenue"
+                        name="Revenue"
+                        fill="#26c6da"
+                        radius={[6, 6, 0, 0]}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -695,8 +860,18 @@ const AnalyticsPage: React.FC = () => {
 
           {/* Sales by Day (Mon–Sun) */}
           <Grid item xs={12}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(186,104,200,0.18)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#ba68c8,#8e24aa)" }} />
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(186,104,200,0.18)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#ba68c8,#8e24aa)",
+                }}
+              />
               <CardContent>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Current Week: Sales by Day (Mon–Sun)
@@ -708,8 +883,18 @@ const AnalyticsPage: React.FC = () => {
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="items_count" name="Items Sold (Qty)" fill="#40c793" radius={[6, 6, 0, 0]} />
-                      <Bar dataKey="revenue" name="Revenue" fill="#8e24aa" radius={[6, 6, 0, 0]} />
+                      <Bar
+                        dataKey="items_count"
+                        name="Items Sold (Qty)"
+                        fill="#40c793"
+                        radius={[6, 6, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="revenue"
+                        name="Revenue"
+                        fill="#8e24aa"
+                        radius={[6, 6, 0, 0]}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -719,16 +904,37 @@ const AnalyticsPage: React.FC = () => {
 
           {/* Top Categories */}
           <Grid item xs={12}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(100,181,246,0.15)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#64b5f6,#1e88e5)" }} />
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(100,181,246,0.15)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#64b5f6,#1e88e5)",
+                }}
+              />
               <CardContent>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Top Categories (by quantity)
                 </Typography>
                 <Box sx={{ height: 280 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topCategories.map((c) => ({ name: c.category || "N/A", qty: c._sum?.quantity || 0 }))}>
-                      <XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} />
+                    <BarChart
+                      data={topCategories.map((c) => ({
+                        name: c.category || "N/A",
+                        qty: c._sum?.quantity || 0,
+                      }))}
+                    >
+                      <XAxis
+                        dataKey="name"
+                        interval={0}
+                        angle={-20}
+                        textAnchor="end"
+                        height={60}
+                      />
                       <YAxis />
                       <Tooltip />
                       <Bar dataKey="qty" fill="#1e88e5" radius={[6, 6, 0, 0]} />
@@ -741,21 +947,48 @@ const AnalyticsPage: React.FC = () => {
 
           {/* Recent Sales */}
           <Grid item xs={12}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(64,199,147,0.15)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#40c793,#249e70)" }} />
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(64,199,147,0.15)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#40c793,#249e70)",
+                }}
+              />
               <CardContent>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Recent Sales
                 </Typography>
                 <List>
                   {recent.map((r) => (
-                    <ListItem key={r.id} divider sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <ListItem
+                      key={r.id}
+                      divider
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
                       <ListItemText
                         primaryTypographyProps={{ sx: { fontWeight: 600 } }}
-                        primary={`${r.itemName} x${r.quantity} — ${currency(r.price)}`}
+                        primary={`${r.itemName} x${r.quantity} — ${currency(
+                          r.price
+                        )}`}
                         secondary={new Date(r.timeStamp).toLocaleString()}
                       />
-                      {r.paymentMethod && <Chip label={r.paymentMethod} size="small" color="default" variant="outlined" />}
+                      {r.paymentMethod && (
+                        <Chip
+                          label={r.paymentMethod}
+                          size="small"
+                          color="default"
+                          variant="outlined"
+                        />
+                      )}
                     </ListItem>
                   ))}
                 </List>
@@ -765,8 +998,18 @@ const AnalyticsPage: React.FC = () => {
 
           {/* Recent Stock Entries */}
           <Grid item xs={12} md={6}>
-            <Card sx={{ overflow: "hidden", border: "1px solid rgba(38,198,218,0.15)" }}>
-              <Box sx={{ height: 4, background: "linear-gradient(90deg,#26c6da,#00acc1)" }} />
+            <Card
+              sx={{
+                overflow: "hidden",
+                border: "1px solid rgba(38,198,218,0.15)",
+              }}
+            >
+              <Box
+                sx={{
+                  height: 4,
+                  background: "linear-gradient(90deg,#26c6da,#00acc1)",
+                }}
+              />
               <CardContent>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 700 }}>
                   Recent Stock Entries (Qty & Date)
@@ -779,7 +1022,9 @@ const AnalyticsPage: React.FC = () => {
                         primary={`${it.name}`}
                         secondary={
                           it.recentEntryAt
-                            ? `+${it.recentEntry ?? 0} — ${new Date(it.recentEntryAt as any).toLocaleString()}`
+                            ? `+${it.recentEntry ?? 0} — ${new Date(
+                                it.recentEntryAt as any
+                              ).toLocaleString()}`
                             : "+0 — -"
                         }
                       />

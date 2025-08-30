@@ -21,22 +21,24 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Chip,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import toast from "react-hot-toast";
 import { outgoingService, OutgoingItem } from "../../services/outgoing";
 import { inventoryService } from "../../services/inventory";
 import { InventoryItem } from "../../types";
 import { useAuthStore } from "../../store/authStore";
-import { useNavigate } from "react-router-dom";
+import { useNotificationStore } from "../../store/notificationStore";
 
 const PAGE_SIZE = 100 as const;
 
 const OutgoingPage: React.FC = () => {
   const { user } = useAuthStore();
-  const navigate = useNavigate();
+  const notificationCount = useNotificationStore((s) => s.notifications.length);
   // Filters and pagination
   const [page, setPage] = useState(1);
   const [product, setProduct] = useState("");
@@ -151,28 +153,39 @@ const OutgoingPage: React.FC = () => {
           direction="row"
           alignItems="center"
           justifyContent="space-between"
-          sx={{ mb: 3 }}
+          sx={{ mb: 3, flexWrap: { xs: "wrap", sm: "nowrap" }, rowGap: 1 }}
         >
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
             Outgoing
           </Typography>
-          <Button
-            variant="contained"
-            onClick={() => setOpenCreate(true)}
-            sx={{
-              fontWeight: 700,
-              borderRadius: 999,
-              px: 2.5,
-              background: "linear-gradient(135deg,#ffb74d,#fb8c00)",
-              boxShadow: "0 4px 14px rgba(251,140,0,0.35)",
-              "&:hover": {
-                background: "linear-gradient(135deg,#ffa726,#f57c00)",
-                boxShadow: "0 6px 18px rgba(251,140,0,0.5)",
-              },
-            }}
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ flexShrink: 0 }}
           >
-            Record Outgoing
-          </Button>
+            <Box sx={{ display: { xs: "none", sm: "inline-flex" } }}>
+              <NotificationsActiveIcon color="primary" />
+            </Box>
+            <Chip size="small" label={notificationCount} />
+            <Button
+              variant="contained"
+              onClick={() => setOpenCreate(true)}
+              sx={{
+                fontWeight: 700,
+                borderRadius: 999,
+                px: 2.5,
+                background: "linear-gradient(135deg,#ffb74d,#fb8c00)",
+                boxShadow: "0 4px 14px rgba(251,140,0,0.35)",
+                "&:hover": {
+                  background: "linear-gradient(135deg,#ffa726,#f57c00)",
+                  boxShadow: "0 6px 18px rgba(251,140,0,0.5)",
+                },
+              }}
+            >
+              Record Outgoing
+            </Button>
+          </Stack>
         </Stack>
 
         <Card
