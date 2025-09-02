@@ -1,26 +1,6 @@
 version: "3.8"
 
 services:
-  # MySQL Database
-  mysql:
-    image: mysql:8.0
-    container_name: ax_mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: "Ashimwe#001"
-      MYSQL_DATABASE: "AX_STOCK_ALX_PROJECT1"
-      MYSQL_USER: ax_user
-      MYSQL_PASSWORD: "Ashimwe#001"
-      TZ: Africa/Kigali
-      MYSQL_INITDB_SKIP_TZINFO: "1"
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./Main_Database:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - ax_network
-
   # Backend API
   backend:
     build:
@@ -29,35 +9,26 @@ services:
       target: development
     container_name: ax_backend
     restart: unless-stopped
+    network_mode: host
     environment:
       NODE_ENV: development
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_NAME: "AX_STOCK_ALX_PROJECT1"
-      DB_USER: ax_user
-      DB_PASSWORD: "Ashimwe#001"
-      DATABASE_URL: "mysql://ax_user:Ashimwe%23001@mysql:3306/AX_STOCK_ALX_PROJECT1"
-      JWT_SECRET: ax_stock_jwt_secret_2024
-      JWT_REFRESH_SECRET: ax_stock_refresh_secret_2024
-      JWT_EXPIRES_IN: 24h
-      JWT_REFRESH_EXPIRES_IN: 7d
+      # Load DB_* and DATABASE_URL from /app/.env (mounted) instead of compose env
+      JWT_SECRET: ${JWT_SECRET:-ax_stock_jwt_secret_2024}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-ax_stock_refresh_secret_2024}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       PORT: 3001
       FRONTEND_URL: http://localhost:3000
       # Timezone settings
       TZ: Africa/Kigali
       APP_TZ: Africa/Kigali
       DB_TZ_OFFSET: "+02:00"
-    ports:
-      - "3001:3001"
-    depends_on:
-      - mysql
+      API_VERSION: ${API_VERSION:-v1}
     volumes:
       - ./backend:/app
       - /app/node_modules
       - ./backend/uploads:/app/uploads
       - ./backend/logs:/app/logs
-    networks:
-      - ax_network
 
   # Frontend React App
   frontend:
@@ -68,7 +39,7 @@ services:
     container_name: ax_frontend
     restart: unless-stopped
     environment:
-      REACT_APP_API_URL: http://localhost:3001/api/v1
+      REACT_APP_API_URL: http://localhost:3001/api/${API_VERSION:-v1}
       REACT_APP_WS_URL: ws://localhost:3001
       TZ: Africa/Kigali
     ports:
@@ -80,9 +51,6 @@ services:
       - /app/node_modules
     networks:
       - ax_network
-
-volumes:
-  mysql_data:
 
 networks:
   ax_network:

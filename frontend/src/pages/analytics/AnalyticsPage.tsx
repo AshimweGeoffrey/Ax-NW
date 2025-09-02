@@ -40,6 +40,11 @@ import { salesService } from "../../services/sales";
 import { outgoingService, OutgoingItem } from "../../services/outgoing";
 import { InventoryItem, Sale } from "../../types";
 
+// Add MUI Date Pickers for custom ranges and export start date
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+
 interface DashboardMetrics {
   totalRevenue: number;
   totalSales: number;
@@ -69,7 +74,7 @@ interface SalesByDayRow {
   revenue: number;
 }
 
-type TimeRange = "currentWeek" | "7d" | "30d" | "90d" | "1y";
+type TimeRange = "currentWeek" | "7d" | "30d" | "90d" | "1y" | "custom";
 
 const AnalyticsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -83,13 +88,30 @@ const AnalyticsPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>("currentWeek");
   const [recentEntries, setRecentEntries] = useState<InventoryItem[]>([]);
 
-  const load = async (range: TimeRange) => {
+  // Custom range state
+  const [customStart, setCustomStart] = useState<Date | null>(null);
+  const [customEnd, setCustomEnd] = useState<Date | null>(null);
+  // Optional export start override
+  const [exportStart, setExportStart] = useState<Date | null>(null);
+
+  const load = async (
+    range: TimeRange,
+    opts?: { startDate?: Date | null; endDate?: Date | null }
+  ) => {
     setLoading(true);
     try {
+      const params: any = { timeRange: range };
+      if (range === "custom") {
+        if (opts?.startDate) params.startDate = opts.startDate.toISOString();
+        if (opts?.endDate) params.endDate = opts.endDate.toISOString();
+      }
       const [dashRes, salesRes] = await Promise.all([
-        api.get("/analytics/dashboard", { params: { timeRange: range } }),
+        api.get("/analytics/dashboard", { params }),
         api.get("/analytics/sales", {
-          params: { timeRange: range, week: "current" },
+          params: {
+            ...params,
+            week: range === "currentWeek" ? "current" : undefined,
+          },
         }),
       ]);
       const data = dashRes.data?.data;
@@ -125,9 +147,16 @@ const AnalyticsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    load(timeRange);
+    if (timeRange === "custom") {
+      // Only load when at least a start date is selected; end date optional
+      if (customStart) {
+        load("custom", { startDate: customStart, endDate: customEnd });
+      }
+    } else {
+      load(timeRange);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeRange]);
+  }, [timeRange, customStart, customEnd]);
 
   const currency = (n: number) =>
     new Intl.NumberFormat(undefined, {
@@ -140,8 +169,22 @@ const AnalyticsPage: React.FC = () => {
 
   // Map timeRange -> startDate/endDate ISO strings for Sales/Outgoing export
   const getDateRange = (
-    range: TimeRange
-  ): { startDate?: string; endDate?: string } => {
+    range: TimeRange,
+    override?: { startDate?: Date | null; endDate?: Date | null }
+  ): { startDate?: string; endDate?: string; titleNote?: string } => {
+    if (range === "custom") {
+      const s = override?.startDate || customStart || undefined;
+      const e = override?.endDate || customEnd || undefined;
+      return {
+        startDate: s ? new Date(s).toISOString() : undefined,
+        endDate: e ? new Date(e).toISOString() : undefined,
+        titleNote: s
+          ? `${new Date(s).toLocaleDateString()} — ${
+              e ? new Date(e).toLocaleDateString() : "present"
+            }`
+          : "Custom Range",
+      };
+    }
     const now = new Date();
     let start: Date | undefined;
     let end: Date | undefined = new Date(now);
@@ -172,7 +215,6 @@ const AnalyticsPage: React.FC = () => {
       start.setFullYear(now.getFullYear() - 1);
       start.setHours(0, 0, 0, 0);
     }
-
     return {
       startDate: start ? start.toISOString() : undefined,
       endDate: end ? end.toISOString() : undefined,
@@ -196,11 +238,14 @@ const AnalyticsPage: React.FC = () => {
     return items;
   };
 
-  const fetchAllSales = async (range: TimeRange): Promise<Sale[]> => {
+  const fetchAllSales = async (
+    range: TimeRange,
+    opts?: { startDate?: string; endDate?: string }
+  ): Promise<Sale[]> => {
     const sales: Sale[] = [];
     let page = 1;
     const limit = 100;
-    const { startDate, endDate } = getDateRange(range);
+    const { startDate, endDate } = opts || getDateRange(range, undefined);
     while (true) {
       const res = await salesService.list({ page, limit, startDate, endDate });
       const data = res.data;
@@ -214,12 +259,13 @@ const AnalyticsPage: React.FC = () => {
   };
 
   const fetchAllOutgoing = async (
-    range: TimeRange
+    range: TimeRange,
+    opts?: { startDate?: string; endDate?: string }
   ): Promise<OutgoingItem[]> => {
     const items: OutgoingItem[] = [];
     let page = 1;
     const limit = 100;
-    const { startDate, endDate } = getDateRange(range);
+    const { startDate, endDate } = opts || getDateRange(range, undefined);
     while (true) {
       const res = await outgoingService.list({
         page,
@@ -336,6 +382,23 @@ const AnalyticsPage: React.FC = () => {
       const today = new Date();
       const dateStr = today.toISOString().slice(0, 10);
 
+      // Determine effective range for export (support optional exportStart override)
+      const base = getDateRange(timeRange);
+      const effectiveStart = exportStart
+        ? exportStart.toISOString()
+        : base.startDate;
+      const effectiveEnd = timeRange === "custom" ? base.endDate : base.endDate; // unchanged
+      const titleRange =
+        timeRange === "custom"
+          ? base.titleNote
+          : effectiveStart
+          ? `${new Date(effectiveStart).toLocaleDateString()} — ${
+              effectiveEnd
+                ? new Date(effectiveEnd).toLocaleDateString()
+                : "present"
+            }`
+          : timeRange;
+
       // Summary
       buildAndAppendSheet(
         wb,
@@ -346,12 +409,13 @@ const AnalyticsPage: React.FC = () => {
         ],
         [
           { metric: "Time Range", value: timeRange },
+          { metric: "Range", value: titleRange || "" },
           { metric: "Total Revenue", value: metrics?.totalRevenue ?? 0 },
           { metric: "Total Sales", value: metrics?.totalSales ?? 0 },
           { metric: "Inventory Items", value: metrics?.totalItems ?? 0 },
           { metric: "Low Stock", value: metrics?.lowStockItems ?? 0 },
         ],
-        `Summary — ${timeRange} — ${dateStr}`
+        `Summary — ${titleRange || timeRange} — ${dateStr}`
       );
 
       // Revenue by Month
@@ -435,11 +499,17 @@ const AnalyticsPage: React.FC = () => {
         `Recent Sales — ${timeRange} — ${dateStr}`
       );
 
-      // Fetch full datasets
+      // Fetch full datasets (respect effective range)
       const [allInventory, allSales, allOutgoing] = await Promise.all([
         fetchAllInventory(),
-        fetchAllSales(timeRange),
-        fetchAllOutgoing(timeRange),
+        fetchAllSales(timeRange, {
+          startDate: effectiveStart,
+          endDate: effectiveEnd,
+        }),
+        fetchAllOutgoing(timeRange, {
+          startDate: effectiveStart,
+          endDate: effectiveEnd,
+        }),
       ]);
 
       // Inventory
@@ -520,46 +590,96 @@ const AnalyticsPage: React.FC = () => {
     <Box>
       <Toolbar />
       <Container maxWidth="lg">
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          alignItems={{ xs: "flex-start", sm: "center" }}
-          justifyContent="space-between"
-          sx={{ mb: 3 }}
-          spacing={2}
-        >
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>
-            Analytics
-          </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel id="range">Time Range</InputLabel>
-              <Select
-                labelId="range"
-                label="Time Range"
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-              >
-                <MenuItem value="currentWeek">Current Week</MenuItem>
-                <MenuItem value="7d">Last 7 days</MenuItem>
-                <MenuItem value="30d">Last 30 days</MenuItem>
-                <MenuItem value="90d">Last 90 days</MenuItem>
-                <MenuItem value="1y">Last year</MenuItem>
-              </Select>
-            </FormControl>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={exportToExcel}
-              startIcon={<FileDownloadRoundedIcon />}
-              disabled={loading || exporting}
-              sx={{
-                fontWeight: 700,
-              }}
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            justifyContent="space-between"
+            sx={{ mb: 3 }}
+            spacing={2}
+          >
+            <Typography variant="h4" sx={{ fontWeight: 800 }}>
+              Analytics
+            </Typography>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ flexWrap: "wrap", rowGap: 1 }}
             >
-              {exporting ? "Exporting…" : "Download Excel"}
-            </Button>
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel id="range">Time Range</InputLabel>
+                <Select
+                  labelId="range"
+                  label="Time Range"
+                  value={timeRange}
+                  onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+                >
+                  <MenuItem value="currentWeek">Current Week</MenuItem>
+                  <MenuItem value="7d">Last 7 days</MenuItem>
+                  <MenuItem value="30d">Last 30 days</MenuItem>
+                  <MenuItem value="90d">Last 90 days</MenuItem>
+                  <MenuItem value="1y">Last year</MenuItem>
+                  <MenuItem value="custom">Custom…</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Optional export start override */}
+              <DatePicker
+                label="Export Start (optional)"
+                value={exportStart}
+                onChange={(d) => setExportStart(d)}
+                slotProps={{ textField: { size: "small" } as any }}
+              />
+
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={exportToExcel}
+                startIcon={<FileDownloadRoundedIcon />}
+                disabled={loading || exporting}
+                sx={{ fontWeight: 700 }}
+              >
+                {exporting ? "Exporting…" : "Download Excel"}
+              </Button>
+            </Stack>
           </Stack>
-        </Stack>
+
+          {/* Custom range pickers */}
+          {timeRange === "custom" && (
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              sx={{ mb: 2 }}
+            >
+              <DatePicker
+                label="Start date"
+                value={customStart}
+                onChange={(d) => setCustomStart(d)}
+                slotProps={{
+                  textField: { size: "small", fullWidth: true } as any,
+                }}
+              />
+              <DatePicker
+                label="End date (optional)"
+                value={customEnd}
+                onChange={(d) => setCustomEnd(d)}
+                slotProps={{
+                  textField: { size: "small", fullWidth: true } as any,
+                }}
+              />
+              <Button
+                variant="outlined"
+                onClick={() =>
+                  load("custom", { startDate: customStart, endDate: customEnd })
+                }
+                disabled={!customStart}
+              >
+                Apply
+              </Button>
+            </Stack>
+          )}
+        </LocalizationProvider>
 
         <Grid container spacing={3}>
           {/* Metric: Total Revenue */}
