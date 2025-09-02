@@ -1,4 +1,9 @@
-FROM node:18-alpine AS base
+FROM node:18-bullseye-slim AS base
+
+# Install OpenSSL (provides libssl1.1 on bullseye) and certificates
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY package*.json ./
@@ -18,11 +23,17 @@ RUN npx prisma generate
 RUN npm run build
 RUN npm prune --production
 
-FROM node:18-alpine AS production
+FROM node:18-bullseye-slim AS production
+
+# Install OpenSSL in runtime image as well
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nodejs
 
 COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=build --chown=nodejs:nodejs /app/node_modules ./node_modules

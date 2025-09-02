@@ -73,9 +73,10 @@ const Dashboard: React.FC = () => {
   const [saleForm, setSaleForm] = useState<{
     itemName: string;
     quantity: number;
-    price: number;
+    price?: number; // optional, no default value
     paymentMethod: "Cash" | "Mobile Money" | "Card";
-  }>({ itemName: "", quantity: 1, price: 0, paymentMethod: "Cash" });
+  }>({ itemName: "", quantity: 1, paymentMethod: "Cash" });
+  const [priceText, setPriceText] = useState<string>("");
 
   const [outForm, setOutForm] = useState<{
     itemName: string;
@@ -195,16 +196,19 @@ const Dashboard: React.FC = () => {
       if (!saleForm.itemName) return toast.error("Select an item");
       if (saleForm.quantity < 1)
         return toast.error("Quantity must be at least 1");
-      if (saleForm.price < 0) return toast.error("Price cannot be negative");
-      await salesService.create(saleForm);
+      const priceNum = parseMoney(priceText);
+      if (priceNum <= 0) return toast.error("Enter a valid price");
+      if (priceNum < 0) return toast.error("Price cannot be negative");
+      await salesService.create({
+        itemName: saleForm.itemName,
+        quantity: saleForm.quantity,
+        price: priceNum,
+        paymentMethod: saleForm.paymentMethod,
+      });
       toast.success("Sale recorded");
       setOpenSale(false);
-      setSaleForm({
-        itemName: "",
-        quantity: 1,
-        price: 0,
-        paymentMethod: "Cash",
-      });
+      setSaleForm({ itemName: "", quantity: 1, paymentMethod: "Cash" });
+      setPriceText("");
       await Promise.all([loadDashboard(), loadItems()]);
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message || "Failed to record sale");
@@ -297,6 +301,19 @@ const Dashboard: React.FC = () => {
 
   // Number formatter for large values
   const fmt = (n: number) => new Intl.NumberFormat().format(n || 0);
+
+  // Helper to format number with thousands separators
+  const formatMoneyInput = (value: string) => {
+    const digits = value.replace(/[^0-9]/g, "");
+    if (!digits) return "";
+    const num = Number(digits);
+    return new Intl.NumberFormat().format(num);
+  };
+
+  const parseMoney = (value: string) => {
+    const digits = value.replace(/[^0-9]/g, "");
+    return digits ? Number(digits) : 0;
+  };
 
   return (
     <Box>
@@ -895,12 +912,11 @@ const Dashboard: React.FC = () => {
                 fullWidth
               />
               <TextField
-                label="Price"
-                type="number"
-                value={saleForm.price}
-                onChange={(e) =>
-                  setSaleForm((s) => ({ ...s, price: Number(e.target.value) }))
-                }
+                label="Price (RWF)"
+                value={priceText}
+                onChange={(e) => setPriceText(formatMoneyInput(e.target.value))}
+                inputMode="numeric"
+                placeholder="e.g. 1,000"
                 fullWidth
               />
             </Stack>

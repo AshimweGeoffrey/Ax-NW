@@ -28,6 +28,17 @@ const getStartOfCurrentWeekMonday = () => {
   return monday;
 };
 
+// Parse ISO date (yyyy-mm-dd or ISO string). Returns Date or null
+const parseDateParam = (value: any): Date | null => {
+  if (!value || typeof value !== "string") return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+// Normalize end date to end-of-day
+const endOfDay = (d: Date) =>
+  new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
 /**
  * @swagger
  * /analytics/dashboard:
@@ -43,28 +54,44 @@ router.get(
   asyncHandler(async (req: any, res: any) => {
     const timeRange = (req.query.timeRange as string) || "currentWeek";
 
+    // Optional custom dates
+    const startQ = parseDateParam(req.query.startDate);
+    const endQ = parseDateParam(req.query.endDate);
+
     // Calculate date range
     const now = new Date();
     let startDate: Date;
+    let endDate: Date = endQ ? endOfDay(endQ) : now;
 
-    switch (timeRange) {
-      case "7d":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case "30d":
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case "90d":
-        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        break;
-      case "1y":
-        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-        break;
-      case "currentWeek":
-        startDate = getStartOfCurrentWeekMonday();
-        break;
-      default:
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    if (startQ) {
+      startDate = startQ;
+    } else {
+      switch (timeRange) {
+        case "7d":
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "30d":
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case "90d":
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        case "1y":
+          startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+        case "currentWeek":
+          startDate = getStartOfCurrentWeekMonday();
+          break;
+        default:
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+    }
+
+    if (startDate > endDate) {
+      // swap if user provided inverted dates
+      const tmp = startDate;
+      startDate = endDate;
+      endDate = tmp;
     }
 
     const [
@@ -79,13 +106,13 @@ router.get(
     ] = await Promise.all([
       // Total revenue
       prisma.saleWeekly.aggregate({
-        where: { timeStamp: { gte: startDate } },
+        where: { timeStamp: { gte: startDate, lte: endDate } },
         _sum: { price: true },
       }),
 
       // Total sales count
       prisma.saleWeekly.count({
-        where: { timeStamp: { gte: startDate } },
+        where: { timeStamp: { gte: startDate, lte: endDate } },
       }),
 
       // Total inventory items
@@ -103,7 +130,7 @@ router.get(
         SUM(price) as revenue,
         COUNT(*) as sales_count
       FROM sale_weekly 
-      WHERE time_stamp >= ${startDate}
+      WHERE time_stamp >= ${startDate} AND time_stamp <= ${endDate}
       GROUP BY DATE_FORMAT(time_stamp, '%Y-%m')
       ORDER BY month ASC
     `,
@@ -111,7 +138,7 @@ router.get(
       // Sales by payment method (respect selected range)
       prisma.saleWeekly.groupBy({
         by: ["paymentMethod"],
-        where: { timeStamp: { gte: startDate } },
+        where: { timeStamp: { gte: startDate, lte: endDate } },
         _sum: { price: true },
         _count: true,
       }),
@@ -119,7 +146,7 @@ router.get(
       // Top selling categories
       prisma.saleWeekly.groupBy({
         by: ["category"],
-        where: { timeStamp: { gte: startDate } },
+        where: { timeStamp: { gte: startDate, lte: endDate } },
         _sum: { quantity: true, price: true },
         _count: true,
         orderBy: { _sum: { quantity: "desc" } },
@@ -130,7 +157,7 @@ router.get(
       prisma.saleWeekly.findMany({
         take: 10,
         orderBy: { timeStamp: "desc" },
-        where: { timeStamp: { gte: startDate } },
+        where: { timeStamp: { gte: startDate, lte: endDate } },
         select: {
           id: true,
           itemName: true,
@@ -182,6 +209,8 @@ router.get(
         },
         recentActivity: { recentSales },
         timeRange,
+        startDate,
+        endDate,
       },
     });
   })
@@ -250,44 +279,60 @@ router.get(
   asyncHandler(async (req: any, res: any) => {
     const timeRange = (req.query.timeRange as string) || "currentWeek";
     const week = (req.query.week as string) || undefined; // e.g. "current"
+
+    const startQ = parseDateParam(req.query.startDate);
+    const endQ = parseDateParam(req.query.endDate);
+
     const now = new Date();
 
     let startDate: Date;
-    switch (timeRange) {
-      case "7d":
-        startDate = new Date(now.getTime() - 7 * 86400000);
-        break;
-      case "30d":
-        startDate = new Date(now.getTime() - 30 * 86400000);
-        break;
-      case "90d":
-        startDate = new Date(now.getTime() - 90 * 86400000);
-        break;
-      case "currentWeek":
-        startDate = getStartOfCurrentWeekMonday();
-        break;
-      default:
-        startDate = new Date(now.getTime() - 30 * 86400000);
+    let endDate: Date = endQ ? endOfDay(endQ) : now;
+
+    if (startQ) {
+      startDate = startQ;
+    } else {
+      switch (timeRange) {
+        case "7d":
+          startDate = new Date(now.getTime() - 7 * 86400000);
+          break;
+        case "30d":
+          startDate = new Date(now.getTime() - 30 * 86400000);
+          break;
+        case "90d":
+          startDate = new Date(now.getTime() - 90 * 86400000);
+          break;
+        case "currentWeek":
+          startDate = getStartOfCurrentWeekMonday();
+          break;
+        default:
+          startDate = new Date(now.getTime() - 30 * 86400000);
+      }
     }
 
     if (week === "current") {
       startDate = getStartOfCurrentWeekMonday();
     }
 
+    if (startDate > endDate) {
+      const tmp = startDate;
+      startDate = endDate;
+      endDate = tmp;
+    }
+
     const [salesTrendsRaw, salesByHourRaw, salesByDayRaw, paymentBreakdownRaw] =
       await Promise.all([
         prisma.$queryRaw<
           any[]
-        >`SELECT DATE(time_stamp) as date, COUNT(*) as sales_count, SUM(price) as revenue, SUM(quantity) as items_sold FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY DATE(time_stamp) ORDER BY date ASC`,
+        >`SELECT DATE(time_stamp) as date, COUNT(*) as sales_count, SUM(price) as revenue, SUM(quantity) as items_sold FROM sale_weekly WHERE time_stamp >= ${startDate} AND time_stamp <= ${endDate} GROUP BY DATE(time_stamp) ORDER BY date ASC`,
         prisma.$queryRaw<
           any[]
-        >`SELECT HOUR(time_stamp) as hour, COUNT(*) as sales_count, SUM(price) as revenue FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY HOUR(time_stamp) ORDER BY hour ASC`,
+        >`SELECT HOUR(time_stamp) as hour, COUNT(*) as sales_count, SUM(price) as revenue FROM sale_weekly WHERE time_stamp >= ${startDate} AND time_stamp <= ${endDate} GROUP BY HOUR(time_stamp) ORDER BY hour ASC`,
         prisma.$queryRaw<
           any[]
-        >`SELECT DAYNAME(time_stamp) as day_name, DAYOFWEEK(time_stamp) as day_number, SUM(quantity) as items_count, SUM(price) as revenue FROM sale_weekly WHERE time_stamp >= ${startDate} GROUP BY DAYOFWEEK(time_stamp), DAYNAME(time_stamp) ORDER BY day_number ASC`,
+        >`SELECT DAYNAME(time_stamp) as day_name, DAYOFWEEK(time_stamp) as day_number, SUM(quantity) as items_count, SUM(price) as revenue FROM sale_weekly WHERE time_stamp >= ${startDate} AND time_stamp <= ${endDate} GROUP BY DAYOFWEEK(time_stamp), DAYNAME(time_stamp) ORDER BY day_number ASC`,
         prisma.saleWeekly.groupBy({
           by: ["paymentMethod"],
-          where: { timeStamp: { gte: startDate } },
+          where: { timeStamp: { gte: startDate, lte: endDate } },
           _sum: { price: true },
           _count: true,
         }),
@@ -352,6 +397,8 @@ router.get(
         salesByDay,
         paymentBreakdown,
         timeRange,
+        startDate,
+        endDate,
       },
     });
   })

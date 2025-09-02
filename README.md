@@ -203,6 +203,36 @@ Base URL: `http://localhost:3001/api/v1`
 - Timezone: ensure host and containers use Africa/Kigali to keep dates consistent
 - Ports in use: stop conflicting services or change exposed ports in docker‑compose
 
+## Docker (external MySQL)
+
+This compose runs frontend and backend only. Point DATABASE*URL (and DB*\* vars) to your external MySQL 8 instance.
+
+1. Prepare env in project root `.env`:
+
+```
+DB_HOST=your.mysql.host
+DB_PORT=3306
+DB_NAME=AX_STOCK_ALX_PROJECT1
+DB_USER=ax_user
+DB_PASSWORD=your_password
+DATABASE_URL="mysql://ax_user:your_password@your.mysql.host:3306/AX_STOCK_ALX_PROJECT1"
+API_VERSION=v1
+```
+
+2. Start containers
+
+```
+docker-compose up -d --build
+```
+
+3. Run migrations/seeds (inside backend container)
+
+```
+docker-compose exec backend npx prisma migrate deploy
+# optional
+docker-compose exec backend npx prisma db seed
+```
+
 ---
 
 This README reflects the current codebase: no Redis, Docker dev stack with MySQL + Backend + Frontend, RBAC in place, weekly analytics (Mon–Sun), RWF currency, Recent Entry fields, Notices, and a browser‑persisted Notification Center on the Dashboard.
