@@ -1,4 +1,4 @@
-# AX Stock (Modern)
+# AX
 
 Full‑stack inventory and sales management system. Backend: Express + TypeScript + Prisma (MySQL). Frontend: React + TypeScript + MUI. Dockerized for local development. Timezone aligned to Africa/Kigali. Currency displayed as RWF.
 
