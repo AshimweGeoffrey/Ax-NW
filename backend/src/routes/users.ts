@@ -7,13 +7,11 @@ import {
   requireAdmin,
   requireManager,
 } from "../middleware/auth";
+import { randomUUID } from "crypto";
 
 const router = express.Router();
-
-// Apply authentication to all routes
 router.use(authenticateToken);
 
-// Validation schemas
 const createUserSchema = z.object({
   name: z.string().min(1).max(32),
   email: z.string().email().max(32),
@@ -29,18 +27,16 @@ const updateUserSchema = z.object({
   accessControl: z
     .enum(["Administrator", "Sale_Manager", "Staff", "Auditor"])
     .optional(),
-  isActive: z.boolean().optional(),
 });
 
-/**
- * @swagger
- * /users:
- *   get:
- *     summary: Get all users
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- */
+// Helper to resolve user by parameter (tries name primary key first, then id column)
+async function resolveUser(param: string) {
+  let user = await prisma.user.findUnique({ where: { name: param } });
+  if (!user) user = await prisma.user.findFirst({ where: { id: param } });
+  return user;
+}
+
+// List users
 router.get(
   "/",
   requireManager,
@@ -51,8 +47,6 @@ router.get(
     const role = req.query.role as string;
 
     const skip = (page - 1) * limit;
-
-    // Build where clause
     const where: any = {};
 
     if (search) {
@@ -61,27 +55,15 @@ router.get(
         { email: { contains: search, mode: "insensitive" } },
       ];
     }
-
-    if (role) {
-      where.accessControl = role;
-    }
+    if (role) where.accessControl = role;
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          accessControl: true,
-          isActive: true,
-          lastLogin: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        select: { id: true, name: true, email: true, accessControl: true },
         skip,
         take: limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: { name: "asc" },
       }),
       prisma.user.count({ where }),
     ]);
@@ -90,41 +72,27 @@ router.get(
       success: true,
       data: {
         users,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       },
     });
   })
 );
 
-/**
- * @swagger
- * /users/{id}:
- *   get:
- *     summary: Get user by ID
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- */
+// Get user
 router.get(
   "/:id",
   requireManager,
   asyncHandler(async (req: any, res: any) => {
-    const user = await prisma.user.findUnique({
-      where: { id: req.params.id },
+    const user = await resolveUser(req.params.id);
+    if (!user) throw createError("User not found", 404);
+
+    const detailed = await prisma.user.findUnique({
+      where: { name: user.name },
       select: {
         id: true,
         name: true,
         email: true,
         accessControl: true,
-        isActive: true,
-        lastLogin: true,
-        createdAt: true,
-        updatedAt: true,
         salesWeekly: {
           take: 10,
           orderBy: { timeStamp: "desc" },
@@ -139,98 +107,57 @@ router.get(
       },
     });
 
-    if (!user) {
-      throw createError("User not found", 404);
-    }
-
-    res.json({
-      success: true,
-      data: { user },
-    });
+    res.json({ success: true, data: { user: detailed } });
   })
 );
 
-/**
- * @swagger
- * /users:
- *   post:
- *     summary: Create new user
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- */
+// Create user
 router.post(
   "/",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const validatedData = createUserSchema.parse(req.body);
 
-    // Check if user already exists
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [{ name: validatedData.name }, { email: validatedData.email }],
       },
     });
-
-    if (existingUser) {
+    if (existingUser)
       throw createError("User with this username or email already exists", 400);
-    }
 
-    // Hash password
     const bcrypt = require("bcryptjs");
     const hashedPassword = await bcrypt.hash(validatedData.password, 12);
 
     const user = await prisma.user.create({
       data: {
-        ...validatedData,
+        id: randomUUID(),
+        name: validatedData.name,
+        email: validatedData.email,
         password: hashedPassword,
+        accessControl: validatedData.accessControl,
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        accessControl: true,
-        isActive: true,
-        createdAt: true,
-      },
+      select: { id: true, name: true, email: true, accessControl: true },
     });
 
-    res.status(201).json({
-      success: true,
-      data: { user },
-    });
+    res.status(201).json({ success: true, data: { user } });
   })
 );
 
-/**
- * @swagger
- * /users/{id}:
- *   put:
- *     summary: Update user
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- */
+// Update user
 router.put(
   "/:id",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const validatedData = updateUserSchema.parse(req.body);
+    const existingUser = await resolveUser(req.params.id);
+    if (!existingUser) throw createError("User not found", 404);
 
-    const existingUser = await prisma.user.findUnique({
-      where: { id: req.params.id },
-    });
-
-    if (!existingUser) {
-      throw createError("User not found", 404);
-    }
-
-    // Check for duplicate name or email if being updated
     if (validatedData.name || validatedData.email) {
-      const duplicateUser = await prisma.user.findFirst({
+      const duplicate = await prisma.user.findFirst({
         where: {
           AND: [
-            { id: { not: req.params.id } },
+            { name: { not: existingUser.name } },
             {
               OR: [
                 validatedData.name ? { name: validatedData.name } : {},
@@ -240,122 +167,70 @@ router.put(
           ],
         },
       });
-
-      if (duplicateUser) {
+      if (duplicate)
         throw createError(
           "User with this username or email already exists",
           400
         );
-      }
     }
 
     const user = await prisma.user.update({
-      where: { id: req.params.id },
-      data: validatedData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        accessControl: true,
-        isActive: true,
-        lastLogin: true,
-        createdAt: true,
-        updatedAt: true,
+      where: { name: existingUser.name },
+      data: {
+        name: validatedData.name ?? existingUser.name,
+        email: validatedData.email ?? existingUser.email,
+        accessControl:
+          validatedData.accessControl ?? existingUser.accessControl,
       },
+      select: { id: true, name: true, email: true, accessControl: true },
     });
 
-    res.json({
-      success: true,
-      data: { user },
-    });
+    res.json({ success: true, data: { user } });
   })
 );
 
-/**
- * @swagger
- * /users/{id}:
- *   delete:
- *     summary: Deactivate user
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- */
+// Deactivate (logical delete not supported by schema, so real delete forbidden) -> perform password nulling? We'll keep deletion blocked.
 router.delete(
   "/:id",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
-    const user = await prisma.user.findUnique({
-      where: { id: req.params.id },
-    });
+    const existingUser = await resolveUser(req.params.id);
+    if (!existingUser) throw createError("User not found", 404);
 
-    if (!user) {
-      throw createError("User not found", 404);
-    }
-
-    // Don't allow deletion of the last administrator
-    if (user.accessControl === "Administrator") {
+    if (existingUser.accessControl === "Administrator") {
       const adminCount = await prisma.user.count({
-        where: { accessControl: "Administrator", isActive: true },
+        where: { accessControl: "Administrator" },
       });
-
-      if (adminCount <= 1) {
-        throw createError("Cannot deactivate the last administrator", 400);
-      }
+      if (adminCount <= 1)
+        throw createError("Cannot remove the last administrator", 400);
     }
 
-    // Deactivate user instead of deleting
-    await prisma.user.update({
-      where: { id: req.params.id },
-      data: { isActive: false },
-    });
-
-    res.json({
-      success: true,
-      message: "User deactivated successfully",
-    });
+    // Hard delete is risky; instead return error (schema has no isActive). If needed, implement by clearing password.
+    // For now block.
+    throw createError("Deletion disabled; no soft-delete field in schema", 400);
   })
 );
 
-/**
- * @swagger
- * /users/{id}/reset-password:
- *   post:
- *     summary: Reset user password
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- */
+// Reset password
 router.post(
   "/:id/reset-password",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const { newPassword } = req.body;
-
-    if (!newPassword || newPassword.length < 6) {
+    if (!newPassword || newPassword.length < 6)
       throw createError("New password must be at least 6 characters long", 400);
-    }
 
-    const user = await prisma.user.findUnique({
-      where: { id: req.params.id },
-    });
+    const existingUser = await resolveUser(req.params.id);
+    if (!existingUser) throw createError("User not found", 404);
 
-    if (!user) {
-      throw createError("User not found", 404);
-    }
-
-    // Hash new password
     const bcrypt = require("bcryptjs");
     const hashedPassword = await bcrypt.hash(newPassword, 12);
 
     await prisma.user.update({
-      where: { id: req.params.id },
+      where: { name: existingUser.name },
       data: { password: hashedPassword },
     });
-
-    res.json({
-      success: true,
-      message: "Password reset successfully",
-    });
+    res.json({ success: true, message: "Password reset successfully" });
   })
 );
 

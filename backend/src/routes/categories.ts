@@ -3,24 +3,21 @@ import { z } from "zod";
 import { prisma } from "../utils/database";
 import { asyncHandler, createError } from "../middleware/errorHandler";
 import { authenticateToken, requireManager } from "../middleware/auth";
+import { randomUUID } from "crypto";
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticateToken);
 
-// Validation schemas
+// Validation schemas (schema only supports name + optional percentage auto maintained)
 const createCategorySchema = z.object({
   name: z.string().min(1).max(32),
-  description: z.string().optional(),
-  profitPercentage: z.number().min(0).default(0),
-  colorCode: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
-    .default("#3B82F6"),
 });
 
-const updateCategorySchema = createCategorySchema.partial();
+const updateCategorySchema = z.object({
+  name: z.string().min(1).max(32).optional(),
+});
 
 /**
  * @swagger
@@ -132,19 +129,15 @@ router.post(
     const existingCategory = await prisma.category.findUnique({
       where: { name: validatedData.name },
     });
-
     if (existingCategory) {
       throw createError("Category with this name already exists", 400);
     }
 
     const category = await prisma.category.create({
-      data: validatedData,
+      data: { id: randomUUID(), name: validatedData.name },
     });
 
-    res.status(201).json({
-      success: true,
-      data: { category },
-    });
+    res.status(201).json({ success: true, data: { category } });
   })
 );
 
@@ -166,31 +159,22 @@ router.put(
     const existingCategory = await prisma.category.findFirst({
       where: { OR: [{ id: req.params.id }, { name: req.params.id }] },
     });
+    if (!existingCategory) throw createError("Category not found", 404);
 
-    if (!existingCategory) {
-      throw createError("Category not found", 404);
-    }
-
-    // Check for duplicate name if being updated
     if (validatedData.name && validatedData.name !== existingCategory.name) {
       const duplicateCategory = await prisma.category.findUnique({
         where: { name: validatedData.name },
       });
-
-      if (duplicateCategory) {
+      if (duplicateCategory)
         throw createError("Category with this name already exists", 400);
-      }
     }
 
     const category = await prisma.category.update({
       where: { name: existingCategory.name },
-      data: validatedData,
+      data: { name: validatedData.name ?? existingCategory.name },
     });
 
-    res.json({
-      success: true,
-      data: { category },
-    });
+    res.json({ success: true, data: { category } });
   })
 );
 

@@ -3,21 +3,21 @@ import { z } from "zod";
 import { prisma } from "../utils/database";
 import { asyncHandler, createError } from "../middleware/errorHandler";
 import { authenticateToken, requireManager } from "../middleware/auth";
+import { randomUUID } from "crypto";
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticateToken);
 
-// Validation schemas
+// Validation schemas (branch schema only has id & name in current Prisma model)
 const createBranchSchema = z.object({
   name: z.string().min(1).max(16),
-  address: z.string().optional(),
-  phone: z.string().optional(),
-  managerId: z.string().optional(),
 });
 
-const updateBranchSchema = createBranchSchema.partial();
+const updateBranchSchema = z.object({
+  name: z.string().min(1).max(16).optional(),
+});
 
 /**
  * @swagger
@@ -33,21 +33,19 @@ router.get(
   asyncHandler(async (req: any, res: any) => {
     const branches = await prisma.branch.findMany({
       include: {
-        manager: {
-          select: { name: true, email: true },
-        },
         outgoingStock: {
           take: 5,
           orderBy: { timeStamp: "desc" },
+          include: {
+            item: { select: { name: true } },
+            user: { select: { name: true } },
+          },
         },
       },
       orderBy: { name: "asc" },
     });
 
-    res.json({
-      success: true,
-      data: { branches },
-    });
+    res.json({ success: true, data: { branches } });
   })
 );
 
@@ -63,12 +61,18 @@ router.get(
 router.get(
   "/:id",
   asyncHandler(async (req: any, res: any) => {
-    const branch = await prisma.branch.findUnique({
-      where: { id: req.params.id },
+    // Param may be branch id (non-unique column) or branch name (PK). Prefer exact name match first.
+    let branch = await prisma.branch.findUnique({
+      where: { name: req.params.id },
+    });
+    if (!branch) {
+      branch = await prisma.branch.findFirst({ where: { id: req.params.id } });
+    }
+    if (!branch) throw createError("Branch not found", 404);
+
+    const enriched = await prisma.branch.findUnique({
+      where: { name: branch.name },
       include: {
-        manager: {
-          select: { name: true, email: true },
-        },
         outgoingStock: {
           take: 10,
           orderBy: { timeStamp: "desc" },
@@ -77,28 +81,10 @@ router.get(
             user: { select: { name: true } },
           },
         },
-        salesWeekly: {
-          take: 10,
-          orderBy: { timeStamp: "desc" },
-          select: {
-            id: true,
-            itemName: true,
-            quantity: true,
-            price: true,
-            timeStamp: true,
-          },
-        },
       },
     });
 
-    if (!branch) {
-      throw createError("Branch not found", 404);
-    }
-
-    res.json({
-      success: true,
-      data: { branch },
-    });
+    res.json({ success: true, data: { branch: enriched } });
   })
 );
 
@@ -115,41 +101,19 @@ router.post(
   "/",
   requireManager,
   asyncHandler(async (req: any, res: any) => {
-    const validatedData = createBranchSchema.parse(req.body);
+    const validated = createBranchSchema.parse(req.body);
 
-    // Check if branch with same name already exists
-    const existingBranch = await prisma.branch.findUnique({
-      where: { name: validatedData.name },
+    const existingByName = await prisma.branch.findUnique({
+      where: { name: validated.name },
     });
-
-    if (existingBranch) {
+    if (existingByName)
       throw createError("Branch with this name already exists", 400);
-    }
-
-    // Check if manager exists (if provided)
-    if (validatedData.managerId) {
-      const manager = await prisma.user.findUnique({
-        where: { id: validatedData.managerId },
-      });
-
-      if (!manager) {
-        throw createError("Manager not found", 400);
-      }
-    }
 
     const branch = await prisma.branch.create({
-      data: validatedData,
-      include: {
-        manager: {
-          select: { name: true, email: true },
-        },
-      },
+      data: { id: randomUUID(), name: validated.name },
     });
 
-    res.status(201).json({
-      success: true,
-      data: { branch },
-    });
+    res.status(201).json({ success: true, data: { branch } });
   })
 );
 
@@ -166,52 +130,30 @@ router.put(
   "/:id",
   requireManager,
   asyncHandler(async (req: any, res: any) => {
-    const validatedData = updateBranchSchema.parse(req.body);
+    const validated = updateBranchSchema.parse(req.body);
 
-    const existingBranch = await prisma.branch.findUnique({
-      where: { id: req.params.id },
+    // Locate branch
+    let branch = await prisma.branch.findUnique({
+      where: { name: req.params.id },
     });
+    if (!branch)
+      branch = await prisma.branch.findFirst({ where: { id: req.params.id } });
+    if (!branch) throw createError("Branch not found", 404);
 
-    if (!existingBranch) {
-      throw createError("Branch not found", 404);
-    }
-
-    // Check for duplicate name if being updated
-    if (validatedData.name) {
-      const duplicateBranch = await prisma.branch.findUnique({
-        where: { name: validatedData.name },
+    // Duplicate name check
+    if (validated.name && validated.name !== branch.name) {
+      const dup = await prisma.branch.findUnique({
+        where: { name: validated.name },
       });
-
-      if (duplicateBranch && duplicateBranch.id !== req.params.id) {
-        throw createError("Branch with this name already exists", 400);
-      }
+      if (dup) throw createError("Branch with this name already exists", 400);
     }
 
-    // Check if manager exists (if being updated)
-    if (validatedData.managerId) {
-      const manager = await prisma.user.findUnique({
-        where: { id: validatedData.managerId },
-      });
-
-      if (!manager) {
-        throw createError("Manager not found", 400);
-      }
-    }
-
-    const branch = await prisma.branch.update({
-      where: { id: req.params.id },
-      data: validatedData,
-      include: {
-        manager: {
-          select: { name: true, email: true },
-        },
-      },
+    const updated = await prisma.branch.update({
+      where: { name: branch.name },
+      data: { name: validated.name ?? branch.name },
     });
 
-    res.json({
-      success: true,
-      data: { branch },
-    });
+    res.json({ success: true, data: { branch: updated } });
   })
 );
 
@@ -228,35 +170,26 @@ router.delete(
   "/:id",
   requireManager,
   asyncHandler(async (req: any, res: any) => {
-    const branch = await prisma.branch.findUnique({
-      where: { id: req.params.id },
+    let branch = await prisma.branch.findUnique({
+      where: { name: req.params.id },
     });
+    if (!branch)
+      branch = await prisma.branch.findFirst({ where: { id: req.params.id } });
+    if (!branch) throw createError("Branch not found", 404);
 
-    if (!branch) {
-      throw createError("Branch not found", 404);
-    }
-
-    // Check if branch has any outgoing stock or sales
-    const [stockCount, salesCount] = await Promise.all([
-      prisma.outgoingStock.count({ where: { branchName: branch.name } }),
-      prisma.saleWeekly.count({ where: { branchId: branch.id } }),
-    ]);
-
-    if (stockCount > 0 || salesCount > 0) {
+    // Check if branch has any outgoing stock
+    const stockCount = await prisma.outgoingStock.count({
+      where: { branchName: branch.name },
+    });
+    if (stockCount > 0) {
       throw createError(
-        "Cannot delete branch with existing stock movements or sales",
+        "Cannot delete branch with existing stock movements",
         400
       );
     }
 
-    await prisma.branch.delete({
-      where: { id: req.params.id },
-    });
-
-    res.json({
-      success: true,
-      message: "Branch deleted successfully",
-    });
+    await prisma.branch.delete({ where: { name: branch.name } });
+    res.json({ success: true, message: "Branch deleted successfully" });
   })
 );
 

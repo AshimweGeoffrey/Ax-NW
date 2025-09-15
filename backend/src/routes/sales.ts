@@ -121,15 +121,11 @@ router.post(
         400
       );
 
-    // Support DBs that still use 'Pos' by mapping 'Card' -> 'Pos' if 'Card' not found
-    let methodToUse = data.paymentMethod;
-    let pay = await prisma.paymentMethod.findUnique({
+    // Support only declared payment methods; 'Card' value already seeded. Remove fallback to 'Pos'.
+    let methodToUse = data.paymentMethod; // strictly Cash | Mobile Money | Card
+    const pay = await prisma.paymentMethod.findUnique({
       where: { name: methodToUse },
     });
-    if (!pay && data.paymentMethod === "Card") {
-      methodToUse = "Pos";
-      pay = await prisma.paymentMethod.findUnique({ where: { name: "Pos" } });
-    }
     if (!pay) throw createError("Payment method not found", 400);
 
     const sale = await prisma.saleWeekly.create({
@@ -175,15 +171,11 @@ router.put(
     }
 
     // Validate payment method if being changed
-    let methodToUse = changes.paymentMethod ?? existing.paymentMethod;
+    let methodToUse = changes.paymentMethod ?? existing.paymentMethod; // keep original or new
     if (changes.paymentMethod) {
-      let pay = await prisma.paymentMethod.findUnique({
-        where: { name: methodToUse },
+      const pay = await prisma.paymentMethod.findUnique({
+        where: { name: methodToUse! },
       });
-      if (!pay && changes.paymentMethod === "Card") {
-        methodToUse = "Pos";
-        pay = await prisma.paymentMethod.findUnique({ where: { name: "Pos" } });
-      }
       if (!pay) throw createError("Payment method not found", 400);
     }
 
@@ -193,12 +185,19 @@ router.put(
         itemName: changes.itemName ?? existing.itemName,
         category: categoryToUse,
         quantity: changes.quantity ?? existing.quantity,
-        price: changes.price !== undefined ? Math.round(changes.price) : existing.price,
+        price:
+          changes.price !== undefined
+            ? Math.round(changes.price)
+            : existing.price,
         paymentMethod: methodToUse,
       },
     });
 
-    res.json({ success: true, data: { sale: updated }, message: "Sale updated" });
+    res.json({
+      success: true,
+      data: { sale: updated },
+      message: "Sale updated",
+    });
   })
 );
 
@@ -212,7 +211,11 @@ router.delete(
     });
     if (!existing) throw createError("Sale not found", 404);
     await prisma.saleWeekly.delete({ where: { id: req.params.id } });
-    res.json({ success: true, data: { success: true }, message: "Sale deleted" });
+    res.json({
+      success: true,
+      data: { success: true },
+      message: "Sale deleted",
+    });
   })
 );
 
