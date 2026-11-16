@@ -1,7 +1,25 @@
-version: "3.8"
-
 services:
-  # Backend API
+  mysql:
+    image: mysql:8.0
+    container_name: ax_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-axroot}
+      MYSQL_DATABASE: ${DB_NAME:-AX_STOCK_ALX_PROJECT1}
+      TZ: Africa/Kigali
+    command: --default-time-zone=+02:00
+    ports:
+      - "${DB_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Loaded automatically on first start only
+      - ./AX_STOCK.sql:/docker-entrypoint-initdb.d/01-AX_STOCK.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD:-axroot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   backend:
     build:
       context: ./backend
@@ -9,28 +27,30 @@ services:
       target: development
     container_name: ax_backend
     restart: unless-stopped
-    network_mode: host
+    depends_on:
+      mysql:
+        condition: service_healthy
     environment:
       NODE_ENV: development
-      # Load DB_* and DATABASE_URL from /app/.env (mounted) instead of compose env
-      JWT_SECRET: ${JWT_SECRET:-ax_stock_jwt_secret_2024}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-ax_stock_refresh_secret_2024}
+      DATABASE_URL: mysql://root:${DB_ROOT_PASSWORD:-axroot}@mysql:3306/${DB_NAME:-AX_STOCK_ALX_PROJECT1}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_me}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       PORT: 3001
       FRONTEND_URL: http://localhost:3000
-      # Timezone settings
       TZ: Africa/Kigali
       APP_TZ: Africa/Kigali
       DB_TZ_OFFSET: "+02:00"
       API_VERSION: ${API_VERSION:-v1}
+    ports:
+      - "3001:3001"
     volumes:
       - ./backend:/app
       - /app/node_modules
       - ./backend/uploads:/app/uploads
       - ./backend/logs:/app/logs
 
-  # Frontend React App
   frontend:
     build:
       context: ./frontend
@@ -49,9 +69,6 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    networks:
-      - ax_network
 
-networks:
-  ax_network:
-    driver: bridge
+volumes:
+  mysql_data:

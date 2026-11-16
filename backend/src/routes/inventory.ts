@@ -243,7 +243,9 @@ router.put(
           new Date(),
           updated.name
         );
-      } catch {}
+      } catch {
+        // non-critical notification failure
+      }
 
       await prisma.remark.create({
         data: {

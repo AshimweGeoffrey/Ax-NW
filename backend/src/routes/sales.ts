@@ -122,7 +122,7 @@ router.post(
       );
 
     // Support only declared payment methods; 'Card' value already seeded. Remove fallback to 'Pos'.
-    let methodToUse = data.paymentMethod; // strictly Cash | Mobile Money | Card
+    const methodToUse = data.paymentMethod; // strictly Cash | Mobile Money | Card
     const pay = await prisma.paymentMethod.findUnique({
       where: { name: methodToUse },
     });
@@ -171,7 +171,7 @@ router.put(
     }
 
     // Validate payment method if being changed
-    let methodToUse = changes.paymentMethod ?? existing.paymentMethod; // keep original or new
+    const methodToUse = changes.paymentMethod ?? existing.paymentMethod; // keep original or new
     if (changes.paymentMethod) {
       const pay = await prisma.paymentMethod.findUnique({
         where: { name: methodToUse! },

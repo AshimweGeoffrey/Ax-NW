@@ -74,58 +74,45 @@ Full‑stack inventory and sales management system. Backend: Express + TypeScrip
 
 ## Quick start (Docker)
 
-Prereqs: Docker + Docker Compose.
+Prereqs: Docker Desktop (Compose v2).
 
 ```bash
-# From project root
 ./setup.sh
-# Then visit
-# Frontend: http://localhost:3000
-# API:      http://localhost:3001
-# Swagger:  http://localhost:3001/api-docs
-# Health:   http://localhost:3001/health
 ```
 
-Default credentials
+This generates `.env` with random JWT secrets, starts MySQL (seeded from `AX_STOCK.sql` on first run), the backend and the frontend.
 
-- Username: admin
-- Password: admin123
+- Frontend: http://localhost:3000
+- API: http://localhost:3001 (docs `/api-docs`, health `/health`)
+- MySQL (host access): `127.0.0.1:3307`
 
-The compose stack runs:
+Sample users from the dump (`Ashimwe_Geoffrey`, `Muvunyi_Jimmy`, `Sibomana_Eugene`) all use the dev password `ChangeMe123!`. Change it, or create a clean admin:
 
-- mysql (port 3306)
-- backend (port 3001)
-- frontend (port 3000)
+```bash
+docker compose exec backend npm run db:seed   # idempotent; prints a generated admin password
+```
+
+Reset the database: `docker compose down -v && docker compose up -d`.
 
 ## Manual setup (local dev)
 
-Prereqs: Node.js 18+, MySQL 8+.
-
-1. Environment
-
-- Copy and edit `.env` in project root (or run `./setup.sh` to generate one)
-- Ensure backend `.env` exists as well (created by you or the script)
-
-2. Backend
+Prereqs: Node.js 18+, MySQL 8 (e.g. `docker compose up -d mysql`).
 
 ```bash
-cd backend
-npm install
-npx prisma generate
-# create DB and run migrations
-npx prisma migrate deploy
-# optional: seed
-npx prisma db seed
-npm run dev
+cp .env.example backend/.env      # then set JWT_SECRET / JWT_REFRESH_SECRET
+cd backend && npm install && npx prisma generate && npm run dev
+cd frontend && npm install && npm start
 ```
 
-3. Frontend
+The schema is defined by `AX_STOCK.sql` (loaded by the MySQL container); `prisma/schema.prisma` mirrors it. There are no Prisma migrations: use `npx prisma db pull` if the SQL changes.
+
+## Tests and lint
 
 ```bash
-cd frontend
-npm install
-npm start
+cd backend && npm test && npm run lint
 ```
+
+Real-data backups belong in `/private` (gitignored). Never commit real password hashes or emails.
 
 ## Environment variables
 

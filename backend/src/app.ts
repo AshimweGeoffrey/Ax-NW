@@ -10,6 +10,12 @@ import dotenv from "dotenv";
 
 // Load environment variables ASAP
 dotenv.config();
+for (const key of ["JWT_SECRET", "JWT_REFRESH_SECRET", "DATABASE_URL"]) {
+  if (!process.env[key]) {
+    console.error(`Missing required environment variable: ${key}`);
+    process.exit(1);
+  }
+}
 // Set process timezone early (recommended to also set via container/env)
 if (!process.env.TZ && process.env.APP_TZ) {
   process.env.TZ = process.env.APP_TZ;
@@ -64,10 +70,19 @@ app.use(compression());
 app.use(morgan("combined"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-// Enable rate limiter only in production to avoid 429s during local dev
+// General limiter only in production to avoid 429s during local dev
 if (process.env.NODE_ENV === "production") {
   app.use(limiter);
 }
+// Brute-force protection on login in every environment
+app.use(
+  `/api/${process.env.API_VERSION || "v1"}/auth/login`,
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: process.env.NODE_ENV === "production" ? 10 : 100,
+    message: { success: false, error: { message: "Too many login attempts, try again later." } },
+  })
+);
 app.use(requestLogger);
 
 // Health check endpoint

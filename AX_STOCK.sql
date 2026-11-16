@@ -392,7 +392,7 @@ CREATE TABLE `user` (
 
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
-INSERT INTO `user` VALUES ('dfcdbdcc-e992-40b6-8498-10469685f226','Ashimwe_Geoffrey','$2a$10$REDACTEDREDACTEDREDACTEDREDACTEDREDACTEDREDACTEDREDACT1','Administrator','user1@example.com'),('081171ff-6c62-4125-a890-6c5ec26415e1','Muvunyi_Jimmy','$2a$10$REDACTEDREDACTEDREDACTEDREDACTEDREDACTEDREDACTEDREDACT2','Sale_Manager','user2@example.com'),('468028f9-a123-4b50-a927-7769b3fc2d26','Sibomana_Eugene','$2a$10$REDACTEDREDACTEDREDACTEDREDACTEDREDACTEDREDACTEDREDACT3','Auditor','user3@example.com');
+INSERT INTO `user` VALUES ('dfcdbdcc-e992-40b6-8498-10469685f226','Ashimwe_Geoffrey','$2a$10$JmA46ORtxGjSYxRSHDUZAuPYr6m5VlXwIiocSvtsPnTcQOWg1DZWq','Administrator','user1@example.com'),('081171ff-6c62-4125-a890-6c5ec26415e1','Muvunyi_Jimmy','$2a$10$DAa.QuZMhSmYbi1vrqtvzuq/SlUOYvLGfcEF.77.iJ8y5vUPwGMCq','Sale_Manager','user2@example.com'),('468028f9-a123-4b50-a927-7769b3fc2d26','Sibomana_Eugene','$2a$10$4iqd4SlzfmJL/enH6pZZzOtUcQ02iC4D7tALjRy.W4BPLOvCVjPBe','Auditor','user3@example.com');
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
