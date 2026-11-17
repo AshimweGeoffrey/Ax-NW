@@ -66,8 +66,8 @@ const NoticesPage: React.FC = () => {
           </Button>
         </Stack>
 
-        <Card sx={{ overflow: "hidden", border: "1px solid rgba(64,199,147,0.15)" }}>
-          <Box sx={{ height: 4, background: "linear-gradient(90deg,#40c793,#29a37a)" }} />
+        <Card sx={{ overflow: "hidden", border: "1px solid rgba(52,211,153,0.15)" }}>
+          <Box sx={{ height: 4, background: "linear-gradient(90deg,#34d399,#22d3ee)" }} />
           <CardContent>
             {loading ? (
               <Typography>Loading…</Typography>
@@ -81,15 +81,15 @@ const NoticesPage: React.FC = () => {
                       sx={{
                         p: 2,
                         borderRadius: 2,
-                        border: "1px solid rgba(64,199,147,0.18)",
-                        background: idx % 2 === 0 ? "rgba(64,199,147,0.06)" : "rgba(255,255,255,0.03)",
-                        boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+                        border: "1px solid rgba(52,211,153,0.18)",
+                        background: idx % 2 === 0 ? "rgba(52,211,153,0.06)" : "rgba(255,255,255,0.03)",
+                        boxShadow: "none",
                         transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                        "&:hover": { transform: "translateY(-1px)", boxShadow: "0 6px 18px rgba(0,0,0,0.18)" },
-                        borderLeft: "3px solid #40c793",
+                        "&:hover": { transform: "translateY(-1px)", boxShadow: "none" },
+                        borderLeft: "3px solid #34d399",
                       }}
                     >
-                      <Avatar sx={{ bgcolor: "#40c79333", color: "#40c793" }}>
+                      <Avatar sx={{ bgcolor: "#34d39933", color: "#34d399" }}>
                         <NotificationsIcon fontSize="small" />
                       </Avatar>
                       <Stack spacing={0.5} sx={{ flex: 1 }}>

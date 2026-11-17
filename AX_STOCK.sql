@@ -16,6 +16,26 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Table structure for table `audit_log` (also auto-created by the backend on start)
+--
+
+DROP TABLE IF EXISTS `audit_log`;
+CREATE TABLE `audit_log` (
+  `id` varchar(50) NOT NULL,
+  `time_stamp` datetime NOT NULL,
+  `user_name` varchar(64) DEFAULT NULL,
+  `role` varchar(32) DEFAULT NULL,
+  `method` varchar(8) NOT NULL,
+  `path` varchar(255) NOT NULL,
+  `status` int NOT NULL,
+  `ip` varchar(64) DEFAULT NULL,
+  `details` text,
+  PRIMARY KEY (`id`),
+  KEY `idx_audit_time` (`time_stamp`),
+  KEY `idx_audit_user` (`user_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `branch`
 --
 
@@ -247,7 +267,6 @@ CREATE TABLE `sale_weekly` (
   KEY `item_name` (`item_name`),
   KEY `fk_sale_weekly_category` (`category`),
   KEY `fk_sale_weekly_payment_method` (`payment_method`),
-  CONSTRAINT `fk_sale_weekly_category` FOREIGN KEY (`category`) REFERENCES `inventory` (`category_name`),
   CONSTRAINT `fk_sale_weekly_payment_method` FOREIGN KEY (`payment_method`) REFERENCES `payment_method` (`name`),
   CONSTRAINT `sale_weekly_ibfk_1` FOREIGN KEY (`user_name`) REFERENCES `user` (`name`),
   CONSTRAINT `sale_weekly_ibfk_2` FOREIGN KEY (`item_name`) REFERENCES `inventory` (`name`)

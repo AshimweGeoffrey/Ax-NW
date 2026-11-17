@@ -339,13 +339,13 @@ const Dashboard: React.FC = () => {
             <Card
               sx={{
                 overflow: "hidden",
-                border: "1px solid rgba(64,199,147,0.15)",
+                border: "1px solid rgba(52,211,153,0.15)",
               }}
             >
               <Box
                 sx={{
                   height: 4,
-                  background: "linear-gradient(90deg,#40c793,#249e70)",
+                  background: "linear-gradient(90deg,#34d399,#22d3ee)",
                 }}
               />
               <CardContent
@@ -378,7 +378,7 @@ const Dashboard: React.FC = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    bgcolor: "rgba(64,199,147,0.15)",
+                    bgcolor: "rgba(52,211,153,0.15)",
                   }}
                 >
                   <ShoppingCartIcon sx={{ color: "primary.main" }} />
@@ -398,7 +398,7 @@ const Dashboard: React.FC = () => {
               <Box
                 sx={{
                   height: 4,
-                  background: "linear-gradient(90deg,#64b5f6,#1e88e5)",
+                  background: "linear-gradient(90deg,#34d399,#22d3ee)",
                 }}
               />
               <CardContent
@@ -434,7 +434,7 @@ const Dashboard: React.FC = () => {
                     bgcolor: "rgba(30,136,229,0.18)",
                   }}
                 >
-                  <Inventory2Rounded sx={{ color: "#64b5f6" }} />
+                  <Inventory2Rounded sx={{ color: "#60a5fa" }} />
                 </Box>
               </CardContent>
             </Card>
@@ -451,7 +451,7 @@ const Dashboard: React.FC = () => {
               <Box
                 sx={{
                   height: 4,
-                  background: "linear-gradient(90deg,#ffb74d,#fb8c00)",
+                  background: "linear-gradient(90deg,#34d399,#22d3ee)",
                 }}
               />
               <CardContent
@@ -487,7 +487,7 @@ const Dashboard: React.FC = () => {
                     bgcolor: "rgba(251,140,0,0.18)",
                   }}
                 >
-                  <WarningAmberRounded sx={{ color: "#ffb74d" }} />
+                  <WarningAmberRounded sx={{ color: "#fbbf24" }} />
                 </Box>
               </CardContent>
             </Card>
@@ -498,13 +498,13 @@ const Dashboard: React.FC = () => {
             <Card
               sx={{
                 overflow: "hidden",
-                border: "1px solid rgba(64,199,147,0.15)",
+                border: "1px solid rgba(52,211,153,0.15)",
               }}
             >
               <Box
                 sx={{
                   height: 4,
-                  background: "linear-gradient(90deg,#40c793,#249e70)",
+                  background: "linear-gradient(90deg,#34d399,#22d3ee)",
                 }}
               />
               <CardContent>
@@ -526,12 +526,12 @@ const Dashboard: React.FC = () => {
                       borderRadius: 999,
                       px: 2.5,
                       py: 1.25,
-                      color: "#0f1115",
-                      background: "linear-gradient(135deg,#40c793,#249e70)",
-                      boxShadow: "0 4px 14px rgba(64,199,147,0.3)",
+                      color: "#0b0f19",
+                      background: "#34d399",
+                      boxShadow: "none",
                       "&:hover": {
-                        background: "linear-gradient(135deg,#2aa574,#1b845a)",
-                        boxShadow: "0 6px 18px rgba(64,199,147,0.45)",
+                        background: "#10b981",
+                        boxShadow: "none",
                       },
                     }}
                   >
@@ -548,12 +548,12 @@ const Dashboard: React.FC = () => {
                       borderRadius: 999,
                       px: 2.5,
                       py: 1.25,
-                      color: "#0f1115",
-                      background: "linear-gradient(135deg,#ffb74d,#fb8c00)",
-                      boxShadow: "0 4px 14px rgba(251,140,0,0.35)",
+                      color: "#0b0f19",
+                      background: "#fbbf24",
+                      boxShadow: "none",
                       "&:hover": {
-                        background: "linear-gradient(135deg,#ffa726,#f57c00)",
-                        boxShadow: "0 6px 18px rgba(251,140,0,0.5)",
+                        background: "#fbbf24",
+                        boxShadow: "none",
                       },
                     }}
                   >
@@ -571,11 +571,11 @@ const Dashboard: React.FC = () => {
                       px: 2.5,
                       py: 1.25,
                       color: "#fff",
-                      background: "linear-gradient(135deg,#64b5f6,#1e88e5)",
-                      boxShadow: "0 4px 14px rgba(30,136,229,0.35)",
+                      background: "#60a5fa",
+                      boxShadow: "none",
                       "&:hover": {
-                        background: "linear-gradient(135deg,#42a5f5,#1976d2)",
-                        boxShadow: "0 6px 18px rgba(30,136,229,0.5)",
+                        background: "#60a5fa",
+                        boxShadow: "none",
                       },
                     }}
                   >
@@ -593,11 +593,11 @@ const Dashboard: React.FC = () => {
                       px: 2.5,
                       py: 1.25,
                       color: "#fff",
-                      background: "linear-gradient(135deg,#ba68c8,#8e24aa)",
-                      boxShadow: "0 4px 14px rgba(142,36,170,0.35)",
+                      background: "#a78bfa",
+                      boxShadow: "none",
                       "&:hover": {
-                        background: "linear-gradient(135deg,#ab47bc,#7b1fa2)",
-                        boxShadow: "0 6px 18px rgba(142,36,170,0.5)",
+                        background: "#a78bfa",
+                        boxShadow: "none",
                       },
                     }}
                   >
@@ -614,12 +614,12 @@ const Dashboard: React.FC = () => {
                       borderRadius: 999,
                       px: 2.5,
                       py: 1.25,
-                      color: "#0f1115",
-                      background: "linear-gradient(135deg,#26c6da,#00acc1)",
-                      boxShadow: "0 4px 14px rgba(0,172,193,0.35)",
+                      color: "#0b0f19",
+                      background: "#22d3ee",
+                      boxShadow: "none",
                       "&:hover": {
-                        background: "linear-gradient(135deg,#00bcd4,#0097a7)",
-                        boxShadow: "0 6px 18px rgba(0,172,193,0.5)",
+                        background: "#22d3ee",
+                        boxShadow: "none",
                       },
                     }}
                   >
@@ -647,13 +647,13 @@ const Dashboard: React.FC = () => {
             <Card
               sx={{
                 overflow: "hidden",
-                border: "1px solid rgba(64,199,147,0.15)",
+                border: "1px solid rgba(52,211,153,0.15)",
               }}
             >
               <Box
                 sx={{
                   height: 4,
-                  background: "linear-gradient(90deg,#40c793,#249e70)",
+                  background: "linear-gradient(90deg,#34d399,#22d3ee)",
                 }}
               />
               <CardContent>

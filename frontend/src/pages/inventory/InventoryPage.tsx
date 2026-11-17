@@ -40,6 +40,9 @@ import { inventoryService } from "../../services/inventory";
 import { categoriesService } from "../../services/categories";
 import { InventoryItem, Category } from "../../types";
 import { useAuthStore } from "../../store/authStore";
+import ImportCsvDialog, { downloadInventoryTemplate } from "../../components/ImportCsvDialog";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DownloadIcon from "@mui/icons-material/Download";
 
 const PAGE_SIZE = 100;
 
@@ -51,6 +54,7 @@ const InventoryPage: React.FC = () => {
   const [category, setCategory] = useState<string>("");
   const [lowStock, setLowStock] = useState(false);
   const [page, setPage] = useState(1);
+  const [openImport, setOpenImport] = useState(false);
 
   // Data
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -218,6 +222,15 @@ const InventoryPage: React.FC = () => {
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
             Inventory
           </Typography>
+          <Stack direction="row" spacing={1}>
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={downloadInventoryTemplate}>
+            CSV template
+          </Button>
+          {(user?.role === "Administrator" || user?.role === "Sale_Manager") && (
+            <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => setOpenImport(true)}>
+              Import CSV
+            </Button>
+          )}
           {user?.role === "Administrator" && (
             <Button
               variant="contained"
@@ -227,18 +240,20 @@ const InventoryPage: React.FC = () => {
                 fontWeight: 700,
                 borderRadius: 999,
                 px: 2.5,
-                background: "linear-gradient(135deg,#64b5f6,#1e88e5)",
-                boxShadow: "0 4px 14px rgba(30,136,229,0.35)",
+                background: "#60a5fa",
+                boxShadow: "none",
                 "&:hover": {
-                  background: "linear-gradient(135deg,#42a5f5,#1976d2)",
-                  boxShadow: "0 6px 18px rgba(30,136,229,0.5)",
+                  background: "#60a5fa",
+                  boxShadow: "none",
                 },
               }}
             >
               New Item
             </Button>
           )}
+          </Stack>
         </Stack>
+        <ImportCsvDialog open={openImport} onClose={() => setOpenImport(false)} onDone={() => loadData()} />
 
         <Card
           sx={{
@@ -250,7 +265,7 @@ const InventoryPage: React.FC = () => {
           <Box
             sx={{
               height: 4,
-              background: "linear-gradient(90deg,#64b5f6,#1e88e5)",
+              background: "linear-gradient(90deg,#34d399,#22d3ee)",
             }}
           />
           <CardContent>
@@ -329,7 +344,7 @@ const InventoryPage: React.FC = () => {
                     sx={{
                       "& th": {
                         fontWeight: 700,
-                        bgcolor: "rgba(64,199,147,0.12)",
+                        bgcolor: "rgba(52,211,153,0.12)",
                       },
                     }}
                   >

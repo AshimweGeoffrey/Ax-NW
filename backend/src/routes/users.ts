@@ -51,8 +51,8 @@ router.get(
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { email: { contains: search, mode: "insensitive" } },
+        { name: { contains: search } },
+        { email: { contains: search } },
       ];
     }
     if (role) where.accessControl = role;

@@ -1,4 +1,4 @@
-FROM node:18-bullseye-slim AS base
+FROM node:20-bookworm-slim AS base
 
 # Install OpenSSL (provides libssl1.1 on bullseye) and certificates
 RUN apt-get update \
@@ -23,7 +23,7 @@ RUN npx prisma generate
 RUN npm run build
 RUN npm prune --production
 
-FROM node:18-bullseye-slim AS production
+FROM node:20-bookworm-slim AS production
 
 # Install OpenSSL in runtime image as well
 RUN apt-get update \

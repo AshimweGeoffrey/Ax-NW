@@ -29,9 +29,12 @@ const createRemarkSchema = z.object({
 router.get(
   "/",
   requireStaff,
-  asyncHandler(async (_req: AuthRequest, res: Response) => {
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    // Newest first, bounded so the list stays fast as notices accumulate
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit as string) || 200));
     const items = await prisma.remark.findMany({
       orderBy: { timeStamp: "desc" },
+      take: limit,
     });
     res.json({ success: true, data: { items } });
   })

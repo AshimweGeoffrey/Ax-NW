@@ -221,12 +221,12 @@ const SalesPage: React.FC = () => {
                 fontWeight: 700,
                 borderRadius: 999,
                 px: 2.5,
-                background: "linear-gradient(135deg,#40c793,#249e70)",
-                color: "#0f1115",
-                boxShadow: "0 4px 14px rgba(64,199,147,0.3)",
+                background: "#34d399",
+                color: "#0b0f19",
+                boxShadow: "none",
                 "&:hover": {
-                  background: "linear-gradient(135deg,#2aa574,#1b845a)",
-                  boxShadow: "0 6px 18px rgba(64,199,147,0.45)",
+                  background: "#10b981",
+                  boxShadow: "none",
                 },
               }}
             >
@@ -237,11 +237,11 @@ const SalesPage: React.FC = () => {
               onClick={() => navigate("/outgoing")}
               sx={{
                 borderRadius: 999,
-                borderColor: "rgba(64,199,147,0.45)",
+                borderColor: "rgba(52,211,153,0.45)",
                 color: "primary.main",
                 "&:hover": {
                   borderColor: "primary.main",
-                  backgroundColor: "rgba(64,199,147,0.08)",
+                  backgroundColor: "rgba(52,211,153,0.08)",
                 },
               }}
             >
@@ -254,13 +254,13 @@ const SalesPage: React.FC = () => {
           sx={{
             mb: 3,
             overflow: "hidden",
-            border: "1px solid rgba(64,199,147,0.15)",
+            border: "1px solid rgba(52,211,153,0.15)",
           }}
         >
           <Box
             sx={{
               height: 4,
-              background: "linear-gradient(90deg,#40c793,#249e70)",
+              background: "linear-gradient(90deg,#34d399,#22d3ee)",
             }}
           />
           <CardContent>

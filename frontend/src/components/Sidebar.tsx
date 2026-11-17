@@ -15,6 +15,10 @@ import InventoryIcon from "@mui/icons-material/Inventory";
 import OutboundIcon from "@mui/icons-material/Outbound";
 import InsightsIcon from "@mui/icons-material/Insights";
 import NotificationsIcon from "@mui/icons-material/Notifications";
+import PeopleIcon from "@mui/icons-material/People";
+import StoreIcon from "@mui/icons-material/Store";
+import CategoryIcon from "@mui/icons-material/Category";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 
@@ -43,6 +47,12 @@ const Sidebar: React.FC<SidebarProps> = ({
     { label: "Notices", icon: <NotificationsIcon />, path: "/notices" },
   ];
 
+  const managerOnly = [
+    { label: "Users", icon: <PeopleIcon />, path: "/users" },
+    { label: "Branches", icon: <StoreIcon />, path: "/branches" },
+    { label: "Categories", icon: <CategoryIcon />, path: "/categories" },
+  ];
+
   const adminOnly = [
     { label: "Analytics", icon: <InsightsIcon />, path: "/analytics" },
   ];
@@ -68,7 +78,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             variant="h6"
             noWrap
             sx={{
-              fontFamily: '"Abnes", "Inter", "Roboto", "Arial", sans-serif',
               fontWeight: 700,
               letterSpacing: 1,
             }}
@@ -91,6 +100,32 @@ const Sidebar: React.FC<SidebarProps> = ({
             <ListItemText primary={item.label} />
           </ListItemButton>
         ))}
+        {(user?.role === "Administrator" || user?.role === "Sale_Manager") &&
+          managerOnly.map((item) => (
+            <ListItemButton
+              key={item.path}
+              selected={location.pathname === item.path}
+              onClick={() => {
+                navigate(item.path);
+                onClose?.();
+              }}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          ))}
+        {(user?.role === "Administrator" || user?.role === "Auditor") && (
+          <ListItemButton
+            selected={location.pathname === "/audit"}
+            onClick={() => {
+              navigate("/audit");
+              onClose?.();
+            }}
+          >
+            <ListItemIcon><FactCheckIcon /></ListItemIcon>
+            <ListItemText primary="Audit log" />
+          </ListItemButton>
+        )}
         {user?.role === "Administrator" &&
           adminOnly.map((item) => (
             <ListItemButton

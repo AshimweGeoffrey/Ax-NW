@@ -175,11 +175,11 @@ const OutgoingPage: React.FC = () => {
                 fontWeight: 700,
                 borderRadius: 999,
                 px: 2.5,
-                background: "linear-gradient(135deg,#ffb74d,#fb8c00)",
-                boxShadow: "0 4px 14px rgba(251,140,0,0.35)",
+                background: "#fbbf24",
+                boxShadow: "none",
                 "&:hover": {
-                  background: "linear-gradient(135deg,#ffa726,#f57c00)",
-                  boxShadow: "0 6px 18px rgba(251,140,0,0.5)",
+                  background: "#fbbf24",
+                  boxShadow: "none",
                 },
               }}
             >
@@ -198,7 +198,7 @@ const OutgoingPage: React.FC = () => {
           <Box
             sx={{
               height: 4,
-              background: "linear-gradient(90deg,#ffb74d,#fb8c00)",
+              background: "linear-gradient(90deg,#34d399,#22d3ee)",
             }}
           />
           <CardContent>

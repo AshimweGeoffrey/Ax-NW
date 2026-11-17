@@ -216,6 +216,126 @@ router.get(
   })
 );
 
+// ---------- Insights (richer analytics) ----------
+const num = (v: any) => Number(v ?? 0);
+
+function resolveRange(q: any): { start: Date; end: Date } {
+  const now = new Date();
+  const startQ = parseDateParam(q.startDate);
+  const endQ = parseDateParam(q.endDate);
+  let end = endQ ? endOfDay(endQ) : now;
+  let start: Date;
+  if (startQ) start = startQ;
+  else {
+    const days: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90, "1y": 365 };
+    if (q.timeRange === "currentWeek") start = getStartOfCurrentWeekMonday();
+    else start = new Date(now.getTime() - (days[q.timeRange as string] || 30) * 86400000);
+  }
+  if (start > end) [start, end] = [end, start];
+  return { start, end };
+}
+
+router.get(
+  "/insights",
+  requireAdmin,
+  asyncHandler(async (req: any, res: any) => {
+    const { start, end } = resolveRange(req.query);
+    const span = end.getTime() - start.getTime();
+    const prevStart = new Date(start.getTime() - span);
+    const prevEnd = new Date(start.getTime() - 1);
+    const q = <T = any>(sql: string, ...args: any[]) => prisma.$queryRawUnsafe<T[]>(sql, ...args);
+
+    const kpiSql = `SELECT COALESCE(SUM(price),0) revenue, COUNT(*) sales, COALESCE(SUM(quantity),0) units,
+                           COUNT(DISTINCT user_name) staff
+                    FROM sale_weekly WHERE time_stamp >= ? AND time_stamp <= ?`;
+
+    const [cur, prev, daily, topItems, byCategory, byUser, byPayment, byWeekday, byHour,
+      stockTotals, lowList, stockByCategory, slowMovers, outByBranch, outDaily, outTop] =
+      await Promise.all([
+        q(kpiSql, start, end),
+        q(kpiSql, prevStart, prevEnd),
+        q(`SELECT DATE_FORMAT(time_stamp,'%Y-%m-%d') day, SUM(price) revenue, COUNT(*) sales, SUM(quantity) units
+           FROM sale_weekly WHERE time_stamp >= ? AND time_stamp <= ? GROUP BY day ORDER BY day`, start, end),
+        q(`SELECT item_name name, SUM(quantity) units, SUM(price) revenue, COUNT(*) sales
+           FROM sale_weekly WHERE time_stamp >= ? AND time_stamp <= ? AND item_name IS NOT NULL
+           GROUP BY item_name ORDER BY revenue DESC LIMIT 10`, start, end),
+        q(`SELECT COALESCE(category,'Unknown') name, SUM(quantity) units, SUM(price) revenue, COUNT(*) sales
+           FROM sale_weekly WHERE time_stamp >= ? AND time_stamp <= ? GROUP BY category ORDER BY revenue DESC`, start, end),
+        q(`SELECT COALESCE(user_name,'Unknown') name, COUNT(*) sales, SUM(quantity) units, SUM(price) revenue
+           FROM sale_weekly WHERE time_stamp >= ? AND time_stamp <= ? GROUP BY user_name ORDER BY revenue DESC`, start, end),
+        q(`SELECT COALESCE(payment_method,'Unknown') name, COUNT(*) sales, SUM(price) revenue
+           FROM sale_weekly WHERE time_stamp >= ? AND time_stamp <= ? GROUP BY payment_method ORDER BY revenue DESC`, start, end),
+        q(`SELECT DAYOFWEEK(time_stamp) dow, COUNT(*) sales, SUM(price) revenue
+           FROM sale_weekly WHERE time_stamp >= ? AND time_stamp <= ? GROUP BY dow ORDER BY dow`, start, end),
+        q(`SELECT HOUR(time_stamp) hour, COUNT(*) sales
+           FROM sale_weekly WHERE time_stamp >= ? AND time_stamp <= ? GROUP BY hour ORDER BY hour`, start, end),
+        q(`SELECT COUNT(*) items, COALESCE(SUM(inventory_quantity),0) units,
+                  SUM(inventory_quantity = 0) outOfStock, SUM(inventory_quantity > 0 AND inventory_quantity < 3) lowStock
+           FROM inventory`),
+        q(`SELECT name, category_name category, inventory_quantity quantity FROM inventory
+           WHERE inventory_quantity < 3 ORDER BY inventory_quantity ASC, name ASC LIMIT 15`),
+        q(`SELECT category_name name, COUNT(*) items, SUM(inventory_quantity) units
+           FROM inventory GROUP BY category_name ORDER BY units DESC`),
+        q(`SELECT i.name, i.category_name category, i.inventory_quantity quantity FROM inventory i
+           WHERE i.inventory_quantity > 0 AND NOT EXISTS (
+             SELECT 1 FROM sale_weekly s WHERE s.item_name = i.name AND s.time_stamp >= ? AND s.time_stamp <= ?)
+           ORDER BY i.inventory_quantity DESC LIMIT 10`, start, end),
+        q(`SELECT COALESCE(branch_name,'Unassigned') name, SUM(quantity) units, COUNT(*) movements
+           FROM outgoing_stock WHERE time_stamp >= ? AND time_stamp <= ? GROUP BY branch_name ORDER BY units DESC`, start, end),
+        q(`SELECT DATE_FORMAT(time_stamp,'%Y-%m-%d') day, SUM(quantity) units
+           FROM outgoing_stock WHERE time_stamp >= ? AND time_stamp <= ? GROUP BY day ORDER BY day`, start, end),
+        q(`SELECT item_name name, SUM(quantity) units FROM outgoing_stock
+           WHERE time_stamp >= ? AND time_stamp <= ? GROUP BY item_name ORDER BY units DESC LIMIT 10`, start, end),
+      ]);
+
+    const k = (r: any) => ({ revenue: num(r?.revenue), sales: num(r?.sales), units: num(r?.units), staff: num(r?.staff) });
+    const c = k(cur[0]);
+    const p = k(prev[0]);
+    const pct = (a: number, b: number) => (b === 0 ? (a === 0 ? 0 : null) : ((a - b) / b) * 100);
+    const norm = (rows: any[], keys: string[]) =>
+      rows.map((r) => Object.fromEntries(Object.entries(r).map(([key, v]) => [key, keys.includes(key) ? num(v) : v])));
+
+    res.json({
+      success: true,
+      data: {
+        range: { start, end, previousStart: prevStart, previousEnd: prevEnd },
+        kpis: {
+          ...c,
+          avgOrderValue: c.sales ? c.revenue / c.sales : 0,
+          previous: p,
+          change: {
+            revenue: pct(c.revenue, p.revenue),
+            sales: pct(c.sales, p.sales),
+            units: pct(c.units, p.units),
+          },
+        },
+        daily: norm(daily, ["revenue", "sales", "units"]),
+        topItems: norm(topItems, ["units", "revenue", "sales"]),
+        byCategory: norm(byCategory, ["units", "revenue", "sales"]),
+        byUser: norm(byUser, ["units", "revenue", "sales"]),
+        byPayment: norm(byPayment, ["revenue", "sales"]),
+        byWeekday: norm(byWeekday, ["dow", "revenue", "sales"]),
+        byHour: norm(byHour, ["hour", "sales"]),
+        stock: {
+          items: num(stockTotals[0]?.items),
+          units: num(stockTotals[0]?.units),
+          outOfStock: num(stockTotals[0]?.outOfStock),
+          lowStock: num(stockTotals[0]?.lowStock),
+          lowList: norm(lowList, ["quantity"]),
+          byCategory: norm(stockByCategory, ["items", "units"]),
+          slowMovers: norm(slowMovers, ["quantity"]),
+        },
+        outgoing: {
+          byBranch: norm(outByBranch, ["units", "movements"]),
+          daily: norm(outDaily, ["units"]),
+          topItems: norm(outTop, ["units"]),
+          totalUnits: outByBranch.reduce((a, r: any) => a + num(r.units), 0),
+        },
+      },
+    });
+  })
+);
+
 /**
  * @swagger
  * /analytics/inventory:

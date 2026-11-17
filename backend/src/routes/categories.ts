@@ -33,13 +33,6 @@ router.get(
   asyncHandler(async (req: any, res: any) => {
     const categories = await prisma.category.findMany({
       include: {
-        inventory: {
-          select: {
-            id: true,
-            name: true,
-            inventoryQuantity: true,
-          },
-        },
         _count: {
           select: {
             inventory: true,

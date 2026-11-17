@@ -5,7 +5,6 @@ import morgan from "morgan";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import { createServer } from "http";
-import { Server } from "socket.io";
 import dotenv from "dotenv";
 
 // Load environment variables ASAP
@@ -31,6 +30,7 @@ import branchRoutes from "./routes/branches";
 import categoryRoutes from "./routes/categories";
 import outgoingRoutes from "./routes/outgoing";
 import remarksRoutes from "./routes/remarks";
+import auditRoutes from "./routes/audit";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
@@ -40,16 +40,14 @@ import { requestLogger } from "./middleware/requestLogger";
 // Import utilities
 import { logger } from "./utils/logger";
 import { connectDatabase } from "./utils/database";
-import { setupSocketIO } from "./utils/socketIO";
+import { auditMiddleware, ensureAuditTable } from "./utils/audit";
+import { ensureIndexes } from "./utils/indexes";
 
 const app = express();
 const httpServer = createServer(app);
 
 // Log timezone in use
 logger.info(`🌍 Process timezone: ${process.env.TZ || "(system default)"}`);
-
-// Initialize Socket.IO
-const io = setupSocketIO(httpServer);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -67,7 +65,8 @@ app.use(
   })
 );
 app.use(compression());
-app.use(morgan("combined"));
+// requestLogger (winston) covers production; morgan is only for readable dev output
+if (process.env.NODE_ENV !== "production") app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // General limiter only in production to avoid 429s during local dev
@@ -84,6 +83,7 @@ app.use(
   })
 );
 app.use(requestLogger);
+app.use(auditMiddleware);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -106,6 +106,7 @@ app.use(`/api/${API_VERSION}/branches`, branchRoutes);
 app.use(`/api/${API_VERSION}/categories`, categoryRoutes);
 app.use(`/api/${API_VERSION}/outgoing`, outgoingRoutes);
 app.use(`/api/${API_VERSION}/remarks`, remarksRoutes);
+app.use(`/api/${API_VERSION}/audit`, auditRoutes);
 
 // Swagger Documentation
 if (process.env.NODE_ENV !== "production") {
@@ -161,6 +162,8 @@ async function startServer() {
   try {
     // Connect to database
     await connectDatabase();
+    await ensureAuditTable();
+    await ensureIndexes();
 
     // Start server
     httpServer.listen(PORT, () => {
@@ -176,4 +179,4 @@ async function startServer() {
 
 startServer();
 
-export { app, io };
+export { app };

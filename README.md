@@ -18,11 +18,11 @@ Full‑stack inventory and sales management system. Backend: Express + TypeScrip
 ## Stack
 
 - Backend
-  - Node.js 18, Express, TypeScript
+  - Node.js 20, Express, TypeScript
   - Prisma ORM (MySQL 8), mysql2
   - JWT auth (access + refresh), Helmet, CORS, Compression, Morgan
-  - Validation with Zod/Joi
-  - Socket.IO (in app, ready for realtime use)
+  - Validation with Zod
+  - Kept deliberately small: unused packages (Socket.IO, Joi, nodemailer, xlsx, ...) were removed; re-add only when a feature needs them
   - Swagger (dev only)
 - Frontend
   - React 18 + TypeScript, React Router v6
@@ -96,7 +96,7 @@ Reset the database: `docker compose down -v && docker compose up -d`.
 
 ## Manual setup (local dev)
 
-Prereqs: Node.js 18+, MySQL 8 (e.g. `docker compose up -d mysql`).
+Prereqs: Node.js 20+, MySQL 8 (e.g. `docker compose up -d mysql`).
 
 ```bash
 cp .env.example backend/.env      # then set JWT_SECRET / JWT_REFRESH_SECRET
@@ -114,6 +114,12 @@ cd backend && npm test && npm run lint
 
 Real-data backups belong in `/private` (gitignored). Never commit real password hashes or emails.
 
+## Audit log, analytics and CSV import
+
+- **Audit log** (`/audit`, Administrator and Auditor): every create/update/delete plus refused (401/403) and failed-login requests, with user, role, IP and a redacted payload (passwords/tokens are never stored). Stored in the `audit_log` table, which the backend creates automatically on start.
+- **Analytics** (`/analytics`, Administrator): revenue trend and period-over-period change, payment mix, best weekdays and hours, top items, categories, slow movers, staff performance, low stock, stock by category and outgoing stock by branch. Exports all sections to Excel.
+- **Inventory CSV import** (Administrator and Sale_Manager): on the Inventory page, use "CSV template" to download a template (`name,category,quantity`) and "Import CSV" to upload it. Categories must exist; existing items either get the quantity added or are left unchanged. Bad rows are reported by row number.
+
 ## Environment variables
 
 Common (root or backend/.env)
@@ -129,7 +135,6 @@ Common (root or backend/.env)
 Frontend
 
 - REACT_APP_API_URL (e.g. http://localhost:3001/api/v1)
-- REACT_APP_WS_URL (e.g. ws://localhost:3001)
 
 Note: Redis was removed; no REDIS_URL is required.
 
@@ -168,7 +173,7 @@ Base URL: `http://localhost:3001/api/v1`
 │     ├─ app.ts
 │     ├─ routes/ (auth, inventory, sales, outgoing, analytics, users, branches, categories, remarks)
 │     ├─ middleware/ (auth, errorHandler, notFound, requestLogger)
-│     └─ utils/ (database, logger, socketIO)
+│     └─ utils/ (database, logger, audit, indexes)
 ├─ frontend/
 │  ├─ Dockerfile
 │  ├─ package.json

@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { ThemeProvider } from "@mui/material/styles";
+import theme from "./theme";
 import {
   CssBaseline,
   Box,
@@ -13,61 +14,27 @@ import {
   Toolbar,
   IconButton,
   Typography,
+  CircularProgress,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { Toaster, toast } from "react-hot-toast";
 
-// Import components (to be created)
-import Login from "./pages/auth/Login";
-import Dashboard from "./pages/Dashboard";
-import SalesPage from "./pages/sales/SalesPage";
-import InventoryPage from "./pages/inventory/InventoryPage";
-import OutgoingPage from "./pages/outgoing/OutgoingPage";
-import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import Sidebar from "./components/Sidebar";
-import NoticesPage from "./pages/notices/NoticesPage";
-
-// Import hooks and stores
 import { useAuthStore } from "./store/authStore";
 import { useNotificationStore } from "./store/notificationStore";
 
-// Create theme
-const theme = createTheme({
-  palette: {
-    mode: "dark",
-    primary: {
-      main: "#40c793",
-    },
-    secondary: {
-      main: "#dc004e",
-    },
-    background: {
-      default: "#0f1115",
-      paper: "#151821",
-    },
-  },
-  typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          borderRadius: 8,
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-        },
-      },
-    },
-  },
-});
+// Pages are loaded on demand so the first visit downloads only what it needs
+import Login from "./pages/auth/Login";
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const SalesPage = lazy(() => import("./pages/sales/SalesPage"));
+const InventoryPage = lazy(() => import("./pages/inventory/InventoryPage"));
+const OutgoingPage = lazy(() => import("./pages/outgoing/OutgoingPage"));
+const AnalyticsPage = lazy(() => import("./pages/analytics/AnalyticsPage"));
+const NoticesPage = lazy(() => import("./pages/notices/NoticesPage"));
+const AuditPage = lazy(() => import("./pages/audit/AuditPage"));
+const UsersPage = lazy(() => import("./pages/manage/ManagePages").then((m) => ({ default: m.UsersPage })));
+const BranchesPage = lazy(() => import("./pages/manage/ManagePages").then((m) => ({ default: m.BranchesPage })));
+const CategoriesPage = lazy(() => import("./pages/manage/ManagePages").then((m) => ({ default: m.CategoriesPage })));
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -87,6 +54,26 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuthStore();
   return user?.role === "Administrator" ? (
+    <>{children}</>
+  ) : (
+    <Navigate to="/" replace />
+  );
+};
+
+// Auditor Route Component (Administrator or Auditor; matches backend /audit)
+const AuditorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuthStore();
+  return user?.role === "Administrator" || user?.role === "Auditor" ? (
+    <>{children}</>
+  ) : (
+    <Navigate to="/" replace />
+  );
+};
+
+// Manager Route Component (Administrator or Sale_Manager; matches backend requireManager)
+const ManagerRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuthStore();
+  return user?.role === "Administrator" || user?.role === "Sale_Manager" ? (
     <>{children}</>
   ) : (
     <Navigate to="/" replace />
@@ -209,8 +196,6 @@ function App() {
                   sx={{
                     display: { xs: "block", md: "none" },
                     ml: 1,
-                    fontFamily:
-                      '"Abnes", "Inter", "Roboto", "Arial", sans-serif',
                     fontWeight: 700,
                     letterSpacing: 0.5,
                   }}
@@ -224,12 +209,20 @@ function App() {
             component="main"
             sx={{
               flexGrow: 1,
+              minWidth: 0,
               pl: isAuthenticated ? { xs: 0, md: "60px" } : 0,
             }}
           >
             {isAuthenticated && (
               <Toolbar sx={{ display: { xs: "block", md: "none" } }} />
             )}
+            <Suspense
+              fallback={
+                <Box sx={{ display: "flex", justifyContent: "center", pt: 12 }}>
+                  <CircularProgress size={28} />
+                </Box>
+              }
+            >
             <Routes>
               {/* Public Routes */}
               <Route
@@ -293,9 +286,52 @@ function App() {
                 }
               />
 
+              <Route
+                path="/users"
+                element={
+                  <ProtectedRoute>
+                    <ManagerRoute>
+                      <UsersPage />
+                    </ManagerRoute>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/branches"
+                element={
+                  <ProtectedRoute>
+                    <ManagerRoute>
+                      <BranchesPage />
+                    </ManagerRoute>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/categories"
+                element={
+                  <ProtectedRoute>
+                    <ManagerRoute>
+                      <CategoriesPage />
+                    </ManagerRoute>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/audit"
+                element={
+                  <ProtectedRoute>
+                    <AuditorRoute>
+                      <AuditPage />
+                    </AuditorRoute>
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Fallback route */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </Suspense>
           </Box>
         </Box>
       </Router>
@@ -312,14 +348,14 @@ function App() {
           success: {
             duration: 3000,
             iconTheme: {
-              primary: "#40c793",
+              primary: "#34d399",
               secondary: "#fff",
             },
           },
           error: {
             duration: 5000,
             iconTheme: {
-              primary: "#f44336",
+              primary: "#f87171",
               secondary: "#fff",
             },
           },

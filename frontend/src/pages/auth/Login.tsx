@@ -71,18 +71,18 @@ const Login: React.FC = () => {
           borderRadius: 3,
           overflow: "hidden",
           bgcolor: "background.paper",
-          border: "1px solid rgba(64,199,147,0.15)",
-          boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(52,211,153,0.15)",
+          boxShadow: "none",
         }}
       >
         <Box
           sx={{
-            background: "linear-gradient(135deg, #40c793 0%, #249e70 100%)",
+            background: "#34d399",
             color: "white",
             py: 4,
             px: 3,
             textAlign: "center",
-            borderBottom: "1px solid rgba(64,199,147,0.35)",
+            borderBottom: "1px solid rgba(52,211,153,0.35)",
           }}
         >
           <LoginIcon sx={{ fontSize: 48, mb: 2 }} />
@@ -114,10 +114,10 @@ const Login: React.FC = () => {
               sx={{
                 mb: 2,
                 "& .MuiOutlinedInput-root > fieldset": {
-                  borderColor: "rgba(64,199,147,0.25)",
+                  borderColor: "rgba(52,211,153,0.25)",
                 },
                 "& .MuiOutlinedInput-root:hover > fieldset": {
-                  borderColor: "rgba(64,199,147,0.45)",
+                  borderColor: "rgba(52,211,153,0.45)",
                 },
                 "& .MuiOutlinedInput-root.Mui-focused > fieldset": {
                   borderColor: "primary.main",
@@ -153,10 +153,10 @@ const Login: React.FC = () => {
               sx={{
                 mb: 3,
                 "& .MuiOutlinedInput-root > fieldset": {
-                  borderColor: "rgba(64,199,147,0.25)",
+                  borderColor: "rgba(52,211,153,0.25)",
                 },
                 "& .MuiOutlinedInput-root:hover > fieldset": {
-                  borderColor: "rgba(64,199,147,0.45)",
+                  borderColor: "rgba(52,211,153,0.45)",
                 },
                 "& .MuiOutlinedInput-root.Mui-focused > fieldset": {
                   borderColor: "primary.main",
@@ -174,28 +174,19 @@ const Login: React.FC = () => {
                 py: 1.5,
                 fontSize: "1.1rem",
                 fontWeight: 700,
-                color: "#0f1115",
-                background: "linear-gradient(135deg, #40c793 0%, #249e70 100%)",
-                boxShadow: "0 4px 14px rgba(64,199,147,0.3)",
+                color: "#0b0f19",
+                background: "#34d399",
+                boxShadow: "none",
                 "&:hover": {
                   background:
-                    "linear-gradient(135deg, #2aa574 0%, #1b845a 100%)",
-                  boxShadow: "0 6px 18px rgba(64,199,147,0.45)",
+                    "#10b981",
+                  boxShadow: "none",
                 },
               }}
             >
               {isLoading ? "Signing In..." : "Sign In"}
             </Button>
 
-            <Box sx={{ mt: 3, textAlign: "center" }}>
-              <Typography variant="body2" color="text.secondary">
-                Default credentials:
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Username: <strong>admin</strong> | Password:{" "}
-                <strong>admin123</strong>
-              </Typography>
-            </Box>
           </Box>
         </CardContent>
       </Card>
